@@ -1,0 +1,12 @@
+{
+  "name": "Depth Studio — Local AI Video Tools",
+  "short_name": "Depth Studio",
+  "description": "Extract depth-map & skeleton videos from any video, 100% locally in your browser",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f0ede3",
+  "theme_color": "#f0ede3",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

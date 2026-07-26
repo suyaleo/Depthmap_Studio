@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Depth Studio — Local AI Video Tools</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f0ede3">
+<style>
+  :root{
+    --bg:#f0ede3;          /* 따뜻한 오트밀 배경 */
+    --panel:#faf8f2;       /* 크림 카드 */
+    --field:#fffdf8;
+    --line:#e4ddcc; --line2:#d6cdb7;
+    --text:#262319; --dim:#8b8371; --label:#57503e;
+    --accent:#c96442;      /* 테라코타 */
+    --accent2:#b0512f;
+    --accent-soft:#f4e3d8; --accent-line:#e6c3ae; --accent-ink:#9c4626;
+    --ink:#262319; --well:#1b1914; --chip:#eee8d9;
+    --serif:"Charter","Iowan Old Style",Georgia,Cambria,"Times New Roman","Malgun Gothic","Yu Gothic",serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Segoe UI","Malgun Gothic","Yu Gothic UI","Microsoft YaHei UI",system-ui,sans-serif; font-size:13px;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  header{
+    display:flex; align-items:center; gap:14px; padding:12px 20px;
+    border-bottom:1px solid var(--line); flex:0 0 auto;
+  }
+  .brand .eyebrow{font-size:10px; letter-spacing:3px; color:var(--accent); font-weight:700;}
+  .brand h1{font-family:var(--serif); font-size:22px; font-weight:600; letter-spacing:-.2px;}
+  .badge{
+    border:1px solid var(--line2); background:transparent; color:var(--dim);
+    font-size:10px; letter-spacing:1.2px; padding:6px 12px; border-radius:999px; font-weight:600;
+  }
+  .spacer{flex:1;}
+  button{
+    font-family:inherit; font-size:13px; color:var(--text);
+    background:var(--field); border:1px solid var(--line2); border-radius:10px;
+    padding:7px 14px; cursor:pointer; transition:background .15s ease, border-color .15s ease, color .15s ease;
+  }
+  button:hover{border-color:#b8ad92; background:#fff;}
+  button:disabled{opacity:.4; cursor:default;}
+  button:focus-visible, select:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .btn-blue{background:var(--accent-soft); border-color:var(--accent-line); color:var(--accent-ink); font-weight:600;}
+  .btn-blue:hover{background:#efd7c6; border-color:var(--accent);}
+  .btn-green{
+    background:var(--accent); border-color:var(--accent2); color:#fff; font-weight:700; font-size:15px;
+    width:100%; padding:12px; box-shadow:0 1px 3px rgba(110,50,20,.25);
+  }
+  .btn-green:hover{background:var(--accent2); border-color:var(--accent2);}
+  .lang-group{display:flex; gap:0; background:var(--field); border:1px solid var(--line2); border-radius:999px; padding:3px;}
+  .lang-group button{border:none; background:transparent; padding:4px 11px; font-size:11px; letter-spacing:.5px; font-weight:600; color:var(--dim); border-radius:999px;}
+  .lang-group button:hover{color:var(--text); background:transparent;}
+  .lang-group button.active{background:var(--ink); color:#f3efe4;}
+  main{
+    flex:1 1 auto; display:grid; min-height:0;
+    grid-template-columns:minmax(280px,1fr) minmax(280px,1fr) 360px;
+    grid-template-rows:auto minmax(0,1fr) auto auto;
+    grid-template-areas:
+      "ihead  ohead  set"
+      "istage ostage set"
+      "itrim  otrim  set"
+      "iunder ounder set";
+    column-gap:14px; row-gap:0; padding:14px 20px;
+  }
+  .panel-head{display:flex; align-items:center; gap:8px; margin-bottom:8px; min-height:24px;}
+  .panel-head .label{font-size:10.5px; letter-spacing:1.8px; color:var(--dim); font-weight:700;}
+  .chip{
+    margin-left:auto; background:var(--chip); border:1px solid var(--line);
+    color:#6f6857; font-size:11px; padding:3px 11px; border-radius:999px; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis; max-width:60%;
+  }
+  .stage{
+    min-height:0; background:var(--well); border:1px solid #d3cab4; border-radius:16px;
+    position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 2px 14px rgba(0,0,0,.4);
+  }
+  .stage video, .stage canvas{width:100%; height:100%; object-fit:contain; display:block;}
+  .stage .placeholder{color:#6e6656; font-size:13px; text-align:center; padding:20px; line-height:1.9;}
+  .stage.drag{outline:2px dashed var(--accent); outline-offset:-8px;}
+  .stage.empty{cursor:pointer;}
+  .stage.empty .placeholder{
+    border:1.5px dashed #4c4636; border-radius:16px; padding:38px 52px;
+    transition:border-color .15s ease;
+  }
+  .stage.empty:hover .placeholder{border-color:var(--accent);}
+  .stage .placeholder .dz-icon{color:#8a7f66; margin-bottom:12px; transition:color .15s ease;}
+  .stage.empty:hover .placeholder .dz-icon{color:var(--accent);}
+  .dz-title{font-size:17px; font-weight:600; color:#b7ae97; margin-bottom:4px;}
+  .dz-sub{font-size:12px; color:#7c745f;}
+  .hint{color:var(--dim); font-size:11.5px;}
+  .trim-wrap{margin-top:8px;}
+  .trimbar{
+    position:relative; height:52px; background:#14120e;
+    border:1px solid #d3cab4; border-radius:10px; overflow:hidden;
+    touch-action:none; user-select:none;
+  }
+  #trimStrip{position:absolute; inset:0; width:100%; height:100%; display:block;}
+  .trim-shade{position:absolute; top:0; bottom:0; background:rgba(16,14,10,.68); pointer-events:none;}
+  .trim-region{
+    position:absolute; top:0; bottom:0; box-sizing:border-box;
+    border-top:2px solid var(--accent); border-bottom:2px solid var(--accent);
+    cursor:grab;
+  }
+  .trim-region:active{cursor:grabbing;}
+  .trim-handle{
+    position:absolute; top:0; bottom:0; width:14px; background:var(--accent);
+    cursor:ew-resize; display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:13px; font-weight:700; border-radius:4px; z-index:2;
+  }
+  .trim-handle:hover{background:var(--accent2);}
+  .trim-info{display:flex; align-items:center; gap:8px; margin-top:6px;}
+  .trim-info button{padding:4px 12px; font-size:12px;}
+  .under{display:flex; align-items:center; gap:8px; margin-top:8px; flex:0 0 auto;}
+  .under .name{color:var(--dim); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .sidebar{display:flex; flex-direction:column; gap:10px; min-height:0;}
+  .settings{
+    flex:1 1 auto; overflow-y:auto; min-height:0; padding-right:4px;
+    display:flex; flex-direction:column; gap:12px;
+  }
+  .settings::-webkit-scrollbar{width:8px;}
+  .settings::-webkit-scrollbar-thumb{background:#d0c6ad; border-radius:4px;}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px;
+    box-shadow:0 1px 2px rgba(80,65,35,.06);
+  }
+  .card h3{font-size:10px; letter-spacing:2px; color:#a99e85; font-weight:700; margin-bottom:10px;}
+  .row{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .row:last-child{margin-bottom:0;}
+  .row label.t{flex:0 0 auto; color:var(--label); min-width:96px;}
+  select,input[type=text]{
+    flex:1; min-width:0; background:var(--field); color:var(--text);
+    border:1px solid var(--line2); border-radius:9px; padding:6px 9px; font-family:inherit; font-size:12px;
+  }
+  select:focus,input[type=text]:focus{border-color:var(--accent); outline:none; box-shadow:0 0 0 3px rgba(201,100,66,.14);}
+  input[type=range]{flex:1; accent-color:var(--accent);}
+  .val{flex:0 0 38px; text-align:right; color:var(--dim); font-variant-numeric:tabular-nums;}
+  footer{flex:0 0 auto; padding:0 20px 14px;}
+  .progress-wrap{
+    background:var(--field); border:1px solid var(--line2); border-radius:999px;
+    height:26px; position:relative; overflow:hidden;
+  }
+  .progress-bar{height:100%; width:0%; background:var(--accent); transition:width .15s linear;}
+  .progress-text{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:600; color:var(--text);
+  }
+  .status-line{margin:8px 0 4px; color:var(--dim); font-size:12px;}
+  #log{
+    background:#211e17; border:1px solid #39342a; border-radius:12px;
+    height:86px; overflow-y:auto; padding:8px 12px; font-family:Consolas,monospace;
+    font-size:11px; color:#b3aa96; white-space:pre-wrap; word-break:break-all; line-height:1.6;
+  }
+  #log::-webkit-scrollbar{width:8px;}
+  #log::-webkit-scrollbar-thumb{background:#4a4436; border-radius:4px;}
+  #log .ok{color:#93bf6e;} #log .warn{color:#d9a83f;} #log .err{color:#e26a4c;}
+  .results{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center; min-height:36px;}
+  .results a, .results button.dl-btn{
+    color:var(--accent-ink); background:var(--accent-soft); border:1px solid var(--accent-line);
+    padding:8px 16px; border-radius:999px; font-size:13px; text-decoration:none; font-weight:700;
+    transition:border-color .15s ease, background .15s ease; cursor:pointer; font-family:inherit;
+  }
+  .results a:hover, .results button.dl-btn:hover{border-color:var(--accent); background:#efd7c6;}
+  .results .dl-primary{
+    background:var(--accent); border-color:var(--accent2); color:#fff;
+    box-shadow:0 1px 3px rgba(110,50,20,.25);
+  }
+  .results .dl-primary:hover{background:var(--accent2); color:#fff;}
+  .results .dl-meta{color:var(--dim); font-size:11px; margin-left:4px;}
+  .results .dl-error{color:#e26a4c; font-size:12px; font-weight:600;}
+  input[type=file]{display:none;}
+  .header-actions{display:flex; align-items:center; gap:8px;}
+  .header-actions .btn-green{padding:8px 18px; font-size:13px; font-weight:700;}
+  .header-actions #cancelBtn{min-width:72px;}
+  .startrow{display:flex; gap:8px;}
+  .startrow .btn-green{flex:1;}
+  .privacy-note{font-size:12px; line-height:1.65; color:var(--dim);}
+  .privacy-note strong{display:block; margin-bottom:4px; color:var(--text); font-family:var(--serif); font-size:16px;}
+  @media (max-width: 1050px){
+    body{overflow:auto; min-height:100%;}
+    main{grid-template-columns:1fr 1fr; grid-template-rows:auto minmax(320px,48vh) auto auto auto;
+      grid-template-areas:"ihead ohead" "istage ostage" "itrim otrim" "iunder ounder" "set set";}
+    .sidebar{margin-top:14px;}
+    .settings{overflow:visible; display:grid; grid-template-columns:repeat(2,minmax(0,1fr));}
+    .startrow,.privacy-note{grid-column:1/-1;}
+    footer{padding-bottom:20px;}
+  }
+  @media (max-width: 700px){
+    header{padding:10px 12px; flex-wrap:wrap; gap:8px;}
+    header .spacer{display:none;}
+    .brand{margin-right:auto;}
+    .badge{display:none;}
+    .header-actions{order:3; width:100%; justify-content:flex-start;}
+    .header-actions .btn-green{flex:1;}
+    main{display:flex; flex-direction:column; padding:12px; gap:8px;}
+    .stage{min-height:280px;}
+    .settings{display:flex;}
+    .row{align-items:flex-start; flex-wrap:wrap;}
+    .row label.t{min-width:100%;}
+    footer{padding:0 12px 16px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="eyebrow">SUYALEO LAB</div>
+    <h1>Depth Studio</h1>
+  </div>
+  <div class="badge">LOCAL ONLY</div>
+  <div class="badge">NO API</div>
+  <div class="spacer"></div>
+  <div class="header-actions">
+    <button class="btn-green" id="startBtn" disabled>&#9654; Start</button>
+    <button id="cancelBtn" disabled data-i18n="cancelBtn">Cancel</button>
+    <button id="syncPlayBtn" class="btn-blue" disabled data-i18n="syncPlay">🔗 Sync Play</button>
+  </div>
+  <div class="lang-group" id="langGroup">
+    <button data-lang="en">EN</button>
+    <button data-lang="ja">JP</button>
+    <button data-lang="ko">KR</button>
+    <button data-lang="zh">CN</button>
+  </div>
+</header>
+
+<main>
+  <!-- 헤드 행: 좌우 라벨 -->
+  <div class="panel-head" style="grid-area:ihead">
+    <span class="label" data-i18n="inputLabel">INPUT — Source Video</span>
+    <span class="chip" id="inChip" data-i18n="noVideo">No video</span>
+  </div>
+  <div class="panel-head" style="grid-area:ohead">
+    <span class="label" data-i18n="outputLabel">OUTPUT — Result Video</span>
+    <span class="chip" id="outChip" data-i18n="waiting">Idle</span>
+  </div>
+
+  <!-- 스테이지 행: 같은 그리드 행이라 높이가 항상 일치 -->
+  <div class="stage empty" id="inStage" style="grid-area:istage">
+    <div class="placeholder" id="inPlaceholder">
+      <svg class="dz-icon" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17V5"/><path d="m6 9 6-6 6 6"/><path d="M4 19.5h16"/></svg>
+      <div class="dz-title" data-i18n="dzTitle">Drop your video here</div>
+      <div class="dz-sub" data-i18n="dzSub">or click to browse — mp4 / webm / mov</div>
+    </div>
+    <video id="inVideo" controls playsinline style="display:none"></video>
+  </div>
+  <div class="stage" id="outStage" style="grid-area:ostage">
+    <div class="placeholder" id="outPlaceholder" data-i18n-html="outPlaceholderHtml"></div>
+    <canvas id="outCanvas" style="display:none"></canvas>
+    <video id="outVideo" controls playsinline style="display:none"></video>
+  </div>
+
+  <!-- 트림 행 -->
+  <div class="trim-wrap" id="trimWrap" style="grid-area:itrim; display:none">
+    <div class="trimbar" id="trimBar">
+      <canvas id="trimStrip"></canvas>
+      <div class="trim-shade" id="shadeL"></div>
+      <div class="trim-shade" id="shadeR"></div>
+      <div class="trim-region" id="trimRegion"></div>
+      <div class="trim-handle" id="trimL">⋮</div>
+      <div class="trim-handle" id="trimR">⋮</div>
+    </div>
+    <div class="trim-info">
+      <span class="hint" id="rangeInfo"></span>
+      <div class="spacer"></div>
+      <button id="rangeResetBtn" data-i18n="rangeReset">Reset</button>
+    </div>
+  </div>
+  <div class="results" id="results" style="grid-area:otrim; align-self:center;"></div>
+
+  <!-- 하단 행 -->
+  <div class="under" style="grid-area:iunder">
+    <button class="btn-blue" id="pickVideoBtn" data-i18n="pickVideo">Select Video…</button>
+    <span class="name" id="inName"></span>
+  </div>
+  <input type="file" id="fileInput" accept="video/*">
+
+  <!-- SETTINGS -->
+  <div class="sidebar" style="grid-area:set">
+  <div class="settings">
+    <div class="card">
+      <h3 data-i18n="h3Output">OUTPUT</h3>
+      <div class="row">
+        <label class="t" data-i18n="outFolder">Output folder</label>
+        <input type="text" id="outDirLabel" value="(Save to Downloads)" readonly>
+        <button id="pickDirBtn" data-i18n="browse">Browse…</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 data-i18n="h3Mode">PROCESSING MODE</h3>
+      <div class="row">
+        <label class="t" data-i18n="modeLabel">Mode</label>
+        <select id="mode">
+          <option value="depth" selected data-i18n="modeDepth">Depth only</option>
+          <option value="overlay" data-i18n="modeOverlay">Depth + Skeleton overlay</option>
+          <option value="skeleton" data-i18n="modeSkeleton">Skeleton only (black bg)</option>
+          <option value="origskel" data-i18n="modeOrigskel">Original + Skeleton</option>
+        </select>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="exportJson"> <span data-i18n="exportJson">Export pose JSON (poses.json)</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 data-i18n="h3Models">MODELS</h3>
+      <div class="row">
+        <label class="t" data-i18n="depthModelLabel">Depth Model</label>
+        <select id="depthModel">
+          <option value="onnx-community/depth-anything-v2-small" selected data-i18n="modelSmall">Depth Anything V2 — Small (~50MB, recommended)</option>
+          <option value="onnx-community/depth-anything-v2-base" data-i18n="modelBase">Depth Anything V2 — Base (~190MB, high quality)</option>
+        </select>
+      </div>
+      <div class="row">
+        <label class="t" data-i18n="poseModelLabel">Pose Model</label>
+        <select id="poseModel">
+          <option value="lite" data-i18n="poseLite">MediaPipe Pose — Lite (fast)</option>
+          <option value="full" selected data-i18n="poseFull">MediaPipe Pose — Full (recommended)</option>
+          <option value="heavy" data-i18n="poseHeavy">MediaPipe Pose — Heavy (precise)</option>
+        </select>
+      </div>
+      <div class="row">
+        <label class="t" data-i18n="maxPeople">Max people</label>
+        <select id="numPoses">
+          <option value="1" data-i18n="p1">1 person</option>
+          <option value="2" selected data-i18n="p2">2 people</option>
+          <option value="3" data-i18n="p3">3 people</option>
+          <option value="4" data-i18n="p4">4 people</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 data-i18n="h3Proc">PROCESSING</h3>
+      <div class="row">
+        <label class="t" data-i18n="maxSideLabel">Max resolution</label>
+        <select id="maxSide">
+          <option value="512" data-i18n="opt512">512px (fast)</option>
+          <option value="768" selected data-i18n="opt768">768px (recommended)</option>
+          <option value="1024" data-i18n="opt1024">1024px</option>
+          <option value="0" data-i18n="optOrig">Original</option>
+        </select>
+      </div>
+      <div class="row">
+        <label class="t" data-i18n="fpsLabel">Processing FPS</label>
+        <select id="fps">
+          <option value="8">8</option>
+          <option value="12">12</option>
+          <option value="15">15</option>
+          <option value="24">24</option>
+          <option value="30" selected data-i18n="fps30">30 (recommended)</option>
+          <option value="60" data-i18n="fps60">60 (for 60fps source)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 data-i18n="h3DepthStyle">DEPTH STYLE</h3>
+      <div class="row">
+        <label class="t" data-i18n="styleLabel">Style</label>
+        <select id="depthStyle">
+          <option value="gray" selected data-i18n="styleGray">Grayscale</option>
+          <option value="inferno" data-i18n="styleInferno">Inferno (thermal)</option>
+          <option value="viridis" data-i18n="styleViridis">Viridis</option>
+        </select>
+      </div>
+      <div class="row">
+        <label class="t" data-i18n="depthDirLabel">Depth direction</label>
+        <select id="depthInvert">
+          <option value="0" selected data-i18n="nearWhite">Near = white</option>
+          <option value="1" data-i18n="nearBlack">Near = black</option>
+        </select>
+      </div>
+      <div class="row">
+        <label class="t" data-i18n="temporalLabel">Temporal smoothing</label>
+        <input type="range" id="temporal" min="0" max="0.9" step="0.05" value="0.35">
+        <span class="val" id="temporalVal">0.35</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 data-i18n="h3Skeleton">SKELETON STYLE</h3>
+      <div class="row">
+        <label class="t" data-i18n="lineWLabel">Line thickness</label>
+        <input type="range" id="lineW" min="1" max="10" step="1" value="3">
+        <span class="val" id="lineWVal">3</span>
+      </div>
+      <div class="row">
+        <label class="t" data-i18n="jointRLabel">Joint radius</label>
+        <input type="range" id="jointR" min="0" max="12" step="1" value="5">
+        <span class="val" id="jointRVal">5</span>
+      </div>
+      <div class="row">
+        <label class="t" data-i18n="confLabel">Confidence</label>
+        <input type="range" id="conf" min="0.1" max="0.9" step="0.05" value="0.35">
+        <span class="val" id="confVal">0.35</span>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="glow" checked> <span data-i18n="glowLabel">Glow/Outline</span></label>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card privacy-note">
+    <strong>Private by design</strong>
+    Videos stay in this browser. The Ubuntu server only delivers the web app; processing runs locally with WebGPU or WASM.
+  </div>
+  </div>
+</main>
+
+<footer>
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="progress-text" id="progressText">0%</div>
+  </div>
+  <div class="status-line" id="statusLine"></div>
+  <div id="log"></div>
+</footer>
+
+<script type="module">
+/* ============================================================
+   Depth Video Extractor — 100% 브라우저 로컬 처리
+   Depth : Depth Anything V2 (transformers.js, WebGPU→WASM 폴백)
+   i18n  : EN / JP / KR / CN (기본 영어, localStorage에 기억)
+   ============================================================ */
+
+const $ = id => document.getElementById(id);
+
+// ---------- i18n ----------
+const I18N = {
+en: {
+  syncPlay:'🔗 Sync Play',
+  inputLabel:'INPUT — Source Video', noVideo:'No video',
+  dzTitle:'Drop your video here', dzSub:'or click to browse — mp4 / webm / mov',
+  pickVideo:'Select Video…',
+  rangeReset:'Reset',
+  rangeInfo:'Selected: {a}s – {b}s ({len}s ≈ {frames} frames)',
+  h3Mode:'PROCESSING MODE', modeLabel:'Mode',
+  modeOverlay:'Depth + Skeleton overlay', modeDepth:'Depth only', modeSkeleton:'Skeleton only (black bg)', modeOrigskel:'Original + Skeleton',
+  exportJson:'Export pose JSON (poses.json)',
+  poseModelLabel:'Pose Model',
+  poseLite:'MediaPipe Pose — Lite (fast)', poseFull:'MediaPipe Pose — Full (recommended)', poseHeavy:'MediaPipe Pose — Heavy (precise)',
+  maxPeople:'Max people', p1:'1 person', p2:'2 people', p3:'3 people', p4:'4 people',
+  h3Skeleton:'SKELETON STYLE',
+  lineWLabel:'Line thickness', jointRLabel:'Joint radius', confLabel:'Confidence', glowLabel:'Glow/Outline',
+  loadingPose:'Loading pose model…',
+  poseReady:'Pose model ready ({variant}, up to {n})',
+  outputLabel:'OUTPUT — Result Video', waiting:'Idle',
+  outPlaceholderHtml:'Press Start to watch<br>processing live here',
+  h3Output:'OUTPUT', outFolder:'Output folder', saveToDownloads:'(Save to Downloads)', browse:'Browse…',
+  h3Models:'MODELS', depthModelLabel:'Depth Model',
+  modelSmall:'Depth Anything V2 — Small (~50MB, recommended)',
+  modelBase:'Depth Anything V2 — Base (~190MB, high quality)',
+  h3Proc:'PROCESSING', maxSideLabel:'Max resolution',
+  opt512:'512px (fast)', opt768:'768px (recommended)', opt1024:'1024px', optOrig:'Original',
+  fpsLabel:'Processing FPS', fps30:'30 (recommended)', fps60:'60 (for 60fps source)',
+  h3DepthStyle:'DEPTH STYLE', styleLabel:'Style',
+  styleGray:'Grayscale', styleInferno:'Inferno (thermal)', styleViridis:'Viridis',
+  depthDirLabel:'Depth direction', nearWhite:'Near = white', nearBlack:'Near = black',
+  temporalLabel:'Temporal smoothing', cancelBtn:'Cancel',
+  statusInit:'Idle — select a video. (AI models are downloaded on the first run, then cached by your browser.)',
+  logIntro:'Depth Studio — everything runs inside this browser (your video is never uploaded).',
+  webgpuOk:'Acceleration: WebGPU available ✓',
+  webgpuNo:'WebGPU not available — CPU processing (latest Chrome/Edge recommended)',
+  notVideo:'Not a video file: {name}',
+  videoReady:'Video ready — {name} ({w}×{h}, {d}s). Press Start.',
+  outDirSet:'Output folder set: {name}',
+  loadingLib:'Loading transformers.js library…',
+  loadingDepth:'Loading depth model… (first run downloads it, cached afterwards)',
+  dlProgress:'Downloading model {pct}% — {file} ({loaded}/{total})',
+  depthReadyGpu:'Depth model ready (WebGPU accelerated)',
+  webgpuFallback:'WebGPU unavailable → falling back to CPU (WASM). Processing will be much slower: {msg}',
+  depthReadyCpu:'Depth model ready (WASM/CPU)',
+  preparingModels:'Preparing model…',
+  cancelling:'Cancelling…', cancelledStatus:'Cancelled.', cancelledShort:'Cancelled',
+  procStartLog:'Processing started: {w}×{h}, {fps}fps, {n} frames',
+  procStatus:'Processing… {w}×{h}, {fps}fps, {n} frames total — watch progress live in the right preview.',
+  frameProgress:'Frame {i}/{n} — about {eta} remaining',
+  etaMin:'{m} min', etaSec:'{s} s',
+  encodingStatus:'Encoding video…', encPct:'Encoding {pct}%',
+  savedTo:'Saved: {name} → {path}',
+  savedDirNote:' — saved to folder {path}',
+  dirSaveFail:"Couldn't save to folder, falling back to download links: {msg}",
+  resultLink:'Result: {name} ({size}) — download link ready',
+  downloadBtn:'Download {name}',
+  saveAsBtn:'Save as…',
+  emptyBlob:'Encoded file is empty ({name}). Try again or lower resolution.',
+  downloadStarted:'Download started: {name} ({size})',
+  downloadFailed:'Download failed: {msg}',
+  clickToDownload:'Processing done — click Download below to save the file.',
+  doneStatus:'Done! {n} frames processed ({s}s){note}',
+  doneLog:'Done! Total {s}s',
+  errLog:'Error: {msg}', errStatus:'Stopped due to an error. Check the log.',
+  wcFallback:'WebCodecs encoding failed → falling back to MediaRecorder realtime capture: {msg}',
+  wcMissing:'This browser lacks WebCodecs → using MediaRecorder realtime capture (frames may drop)',
+  noH264:'No H.264 encoder available for this resolution',
+},
+ja: {
+  syncPlay:'🔗 同時再生',
+  inputLabel:'INPUT — 入力動画', noVideo:'動画なし',
+  dzTitle:'ここに動画をドロップ', dzSub:'またはクリックして選択 — mp4 / webm / mov',
+  pickVideo:'動画を選択…',
+  rangeReset:'リセット',
+  rangeInfo:'選択: {a}s – {b}s（{len}秒 ≈ {frames}フレーム）',
+  h3Mode:'処理モード', modeLabel:'モード',
+  modeOverlay:'深度 + スケルトン重ね', modeDepth:'深度のみ', modeSkeleton:'スケルトンのみ（黒背景）', modeOrigskel:'元映像 + スケルトン',
+  exportJson:'ポーズJSONを書き出し (poses.json)',
+  poseModelLabel:'ポーズモデル',
+  poseLite:'MediaPipe Pose — Lite（高速）', poseFull:'MediaPipe Pose — Full（推奨）', poseHeavy:'MediaPipe Pose — Heavy（高精度）',
+  maxPeople:'最大人数', p1:'1人', p2:'2人', p3:'3人', p4:'4人',
+  h3Skeleton:'スケルトンスタイル',
+  lineWLabel:'線の太さ', jointRLabel:'関節の半径', confLabel:'信頼度', glowLabel:'グロー/輪郭',
+  loadingPose:'ポーズモデルを読み込み中…',
+  poseReady:'ポーズモデル準備完了（{variant}・最大{n}人）',
+  outputLabel:'OUTPUT — 出力動画', waiting:'待機中',
+  outPlaceholderHtml:'Startを押すと、ここに<br>処理の様子がリアルタイム表示されます',
+  h3Output:'出力', outFolder:'出力フォルダ', saveToDownloads:'(ダウンロードに保存)', browse:'参照…',
+  h3Models:'モデル', depthModelLabel:'深度モデル',
+  modelSmall:'Depth Anything V2 — Small（約50MB・推奨）',
+  modelBase:'Depth Anything V2 — Base（約190MB・高品質）',
+  h3Proc:'処理設定', maxSideLabel:'解像度（長辺）',
+  opt512:'512px（高速）', opt768:'768px（推奨）', opt1024:'1024px', optOrig:'元のサイズ',
+  fpsLabel:'処理FPS', fps30:'30（推奨）', fps60:'60（60fps素材用）',
+  h3DepthStyle:'深度スタイル', styleLabel:'スタイル',
+  styleGray:'グレースケール', styleInferno:'Inferno（サーマル風）', styleViridis:'Viridis',
+  depthDirLabel:'深度の向き', nearWhite:'近い = 白', nearBlack:'近い = 黒',
+  temporalLabel:'時間スムージング', cancelBtn:'キャンセル',
+  statusInit:'待機中 — 動画を選択してください。（初回実行時にAIモデルをダウンロードし、以降はブラウザにキャッシュされます）',
+  logIntro:'Depth Studio — すべての処理はこのブラウザ内だけで行われます（動画はアップロードされません）。',
+  webgpuOk:'アクセラレーション: WebGPU 利用可能 ✓',
+  webgpuNo:'WebGPU 非対応 — CPU処理になります（最新のChrome/Edge推奨）',
+  notVideo:'動画ファイルではありません: {name}',
+  videoReady:'動画準備完了 — {name}（{w}×{h}, {d}秒）。Startを押してください。',
+  outDirSet:'出力フォルダを設定: {name}',
+  loadingLib:'transformers.js ライブラリを読み込み中…',
+  loadingDepth:'深度モデルを読み込み中…（初回はダウンロード、以降はキャッシュ）',
+  dlProgress:'モデルをダウンロード中 {pct}% — {file}（{loaded}/{total}）',
+  depthReadyGpu:'深度モデル準備完了（WebGPU）',
+  webgpuFallback:'WebGPUが使えないため CPU（WASM）にフォールバックします。処理がかなり遅くなります: {msg}',
+  depthReadyCpu:'深度モデル準備完了（WASM/CPU）',
+  preparingModels:'モデル準備中…',
+  cancelling:'キャンセル中…', cancelledStatus:'キャンセルしました。', cancelledShort:'キャンセル',
+  procStartLog:'処理開始: {w}×{h}, {fps}fps, {n}フレーム',
+  procStatus:'処理中… {w}×{h}, {fps}fps, 全{n}フレーム — 右のプレビューで進行状況を確認できます。',
+  frameProgress:'フレーム {i}/{n} — 残り約{eta}',
+  etaMin:'{m}分', etaSec:'{s}秒',
+  encodingStatus:'動画をエンコード中…', encPct:'エンコード {pct}%',
+  savedTo:'保存: {name} → {path}',
+  savedDirNote:' — フォルダ {path} に保存しました',
+  dirSaveFail:'フォルダへの保存に失敗、ダウンロードリンクに切り替えます: {msg}',
+  resultLink:'結果: {name}（{size}）— ダウンロードリンク生成',
+  downloadBtn:'{name} をダウンロード',
+  saveAsBtn:'名前を付けて保存…',
+  emptyBlob:'出力ファイルが空です（{name}）。解像度を下げて再試行してください。',
+  downloadStarted:'ダウンロード開始: {name}（{size}）',
+  downloadFailed:'ダウンロード失敗: {msg}',
+  clickToDownload:'処理完了 — 下のダウンロードボタンで保存してください。',
+  doneStatus:'完了！ {n}フレーム処理（{s}秒）{note}',
+  doneLog:'完了！ 合計{s}秒',
+  errLog:'エラー: {msg}', errStatus:'エラーで中断しました。ログを確認してください。',
+  wcFallback:'WebCodecsエンコード失敗 → MediaRecorderリアルタイム録画にフォールバック: {msg}',
+  wcMissing:'WebCodecs非対応ブラウザ → MediaRecorderリアルタイム録画で進めます（フレーム落ちの可能性）',
+  noH264:'この解像度に対応するH.264エンコーダがありません',
+},
+ko: {
+  syncPlay:'🔗 동시 재생',
+  inputLabel:'INPUT — 업로드 영상', noVideo:'영상 없음',
+  dzTitle:'영상을 여기로 드래그', dzSub:'또는 클릭해서 선택 — mp4 / webm / mov',
+  pickVideo:'영상 선택…',
+  rangeReset:'초기화',
+  rangeInfo:'선택: {a}s – {b}s ({len}초 ≈ {frames}프레임)',
+  h3Mode:'PROCESSING MODE', modeLabel:'모드',
+  modeOverlay:'Depth + Skeleton Overlay', modeDepth:'Depth Only', modeSkeleton:'Skeleton Only (검정 배경)', modeOrigskel:'원본 + Skeleton',
+  exportJson:'Export JSON (poses.json)',
+  poseModelLabel:'Pose Model',
+  poseLite:'MediaPipe Pose — Lite (빠름)', poseFull:'MediaPipe Pose — Full (권장)', poseHeavy:'MediaPipe Pose — Heavy (정밀)',
+  maxPeople:'최대 인원', p1:'1명', p2:'2명', p3:'3명', p4:'4명',
+  h3Skeleton:'SKELETON STYLE',
+  lineWLabel:'Line thickness', jointRLabel:'Joint radius', confLabel:'Confidence', glowLabel:'Glow/Outline',
+  loadingPose:'Pose 모델 로딩 중…',
+  poseReady:'Pose 모델 준비 완료 ({variant}, 최대 {n}명)',
+  outputLabel:'OUTPUT — 생성 완료 영상', waiting:'대기 중',
+  outPlaceholderHtml:'Start를 누르면 여기에서<br>처리 과정이 실시간으로 보입니다',
+  h3Output:'OUTPUT', outFolder:'출력 폴더', saveToDownloads:'(다운로드로 저장)', browse:'찾아보기…',
+  h3Models:'MODELS', depthModelLabel:'Depth Model',
+  modelSmall:'Depth Anything V2 — Small (~50MB, 권장)',
+  modelBase:'Depth Anything V2 — Base (~190MB, 고품질)',
+  h3Proc:'처리 설정', maxSideLabel:'해상도(최대변)',
+  opt512:'512px (빠름)', opt768:'768px (권장)', opt1024:'1024px', optOrig:'원본',
+  fpsLabel:'처리 FPS', fps30:'30 (권장)', fps60:'60 (60fps 원본용)',
+  h3DepthStyle:'DEPTH STYLE', styleLabel:'Style',
+  styleGray:'Grayscale', styleInferno:'Inferno (열화상풍)', styleViridis:'Viridis',
+  depthDirLabel:'Depth 방향', nearWhite:'가까움 = 흰색', nearBlack:'가까움 = 검정',
+  temporalLabel:'Temporal 스무딩', cancelBtn:'Cancel',
+  statusInit:'대기 중 — 영상을 선택하세요. (첫 실행 시 AI 모델을 내려받습니다. 이후엔 브라우저에 캐시됩니다.)',
+  logIntro:'Depth Studio — 모든 처리는 이 브라우저 안에서만 이뤄집니다 (영상 업로드 없음).',
+  webgpuOk:'가속: WebGPU 사용 가능 ✓',
+  webgpuNo:'WebGPU 미지원 — CPU 처리 (Chrome/Edge 최신 버전 권장)',
+  notVideo:'영상 파일이 아닙니다: {name}',
+  videoReady:'영상 준비 완료 — {name} ({w}×{h}, {d}초). Start를 누르세요.',
+  outDirSet:'출력 폴더 지정: {name}',
+  loadingLib:'transformers.js 라이브러리 로딩 중…',
+  loadingDepth:'Depth 모델 로딩 중… (첫 실행 시 다운로드, 이후 캐시 사용)',
+  dlProgress:'모델 다운로드 {pct}% — {file} ({loaded}/{total})',
+  depthReadyGpu:'Depth 모델 준비 완료 (WebGPU 가속)',
+  webgpuFallback:'WebGPU 사용 불가 → CPU(WASM)로 폴백합니다. 처리 속도가 많이 느려집니다: {msg}',
+  depthReadyCpu:'Depth 모델 준비 완료 (WASM/CPU)',
+  preparingModels:'모델 준비 중…',
+  cancelling:'취소 중…', cancelledStatus:'취소되었습니다.', cancelledShort:'취소',
+  procStartLog:'처리 시작: {w}×{h}, {fps}fps, {n}프레임',
+  procStatus:'처리 중… {w}×{h}, {fps}fps, 총 {n}프레임 — 오른쪽 미리보기에서 진행 상황을 볼 수 있습니다.',
+  frameProgress:'프레임 {i}/{n} — 남은 시간 약 {eta}',
+  etaMin:'{m}분', etaSec:'{s}초',
+  encodingStatus:'영상 인코딩 중…', encPct:'인코딩 {pct}%',
+  savedTo:'결과: {name} → {path}',
+  savedDirNote:' — {path} 폴더에 저장됨',
+  dirSaveFail:'폴더 저장 실패, 다운로드 링크로 대체합니다: {msg}',
+  resultLink:'결과: {name} ({size}) — 다운로드 링크 생성',
+  downloadBtn:'{name} 다운로드',
+  saveAsBtn:'다른 이름으로 저장…',
+  emptyBlob:'인코딩 결과가 비어 있습니다 ({name}). 해상도를 낮추고 다시 시도하세요.',
+  downloadStarted:'다운로드 시작: {name} ({size})',
+  downloadFailed:'다운로드 실패: {msg}',
+  clickToDownload:'처리 완료 — 아래 다운로드 버튼을 눌러 저장하세요.',
+  doneStatus:'완료! {n}프레임 처리 ({s}초 소요){note}',
+  doneLog:'완료! 총 {s}초 소요',
+  errLog:'오류: {msg}', errStatus:'오류로 중단되었습니다. 로그를 확인하세요.',
+  wcFallback:'WebCodecs 인코딩 실패 → MediaRecorder 실시간 녹화로 폴백합니다: {msg}',
+  wcMissing:'WebCodecs 미지원 브라우저 → MediaRecorder 실시간 녹화로 진행합니다 (프레임 누락 가능)',
+  noH264:'이 해상도를 지원하는 H.264 인코더가 없습니다',
+},
+zh: {
+  syncPlay:'🔗 同步播放',
+  inputLabel:'INPUT — 上传视频', noVideo:'无视频',
+  dzTitle:'将视频拖到这里', dzSub:'或点击选择文件 — mp4 / webm / mov',
+  pickVideo:'选择视频…',
+  rangeReset:'重置',
+  rangeInfo:'已选：{a}s – {b}s（{len}秒 ≈ {frames}帧）',
+  h3Mode:'处理模式', modeLabel:'模式',
+  modeOverlay:'深度 + 骨架叠加', modeDepth:'仅深度', modeSkeleton:'仅骨架（黑色背景）', modeOrigskel:'原视频 + 骨架',
+  exportJson:'导出姿态JSON (poses.json)',
+  poseModelLabel:'姿态模型',
+  poseLite:'MediaPipe Pose — Lite（快速）', poseFull:'MediaPipe Pose — Full（推荐）', poseHeavy:'MediaPipe Pose — Heavy（精确）',
+  maxPeople:'最大人数', p1:'1人', p2:'2人', p3:'3人', p4:'4人',
+  h3Skeleton:'骨架风格',
+  lineWLabel:'线条粗细', jointRLabel:'关节半径', confLabel:'置信度', glowLabel:'发光/描边',
+  loadingPose:'正在加载姿态模型…',
+  poseReady:'姿态模型就绪（{variant}，最多{n}人）',
+  outputLabel:'OUTPUT — 输出视频', waiting:'等待中',
+  outPlaceholderHtml:'点击 Start 后<br>处理过程将在此实时显示',
+  h3Output:'输出', outFolder:'输出文件夹', saveToDownloads:'(保存到下载)', browse:'浏览…',
+  h3Models:'模型', depthModelLabel:'深度模型',
+  modelSmall:'Depth Anything V2 — Small（约50MB，推荐）',
+  modelBase:'Depth Anything V2 — Base（约190MB，高质量）',
+  h3Proc:'处理设置', maxSideLabel:'分辨率（最长边）',
+  opt512:'512px（快速）', opt768:'768px（推荐）', opt1024:'1024px', optOrig:'原始尺寸',
+  fpsLabel:'处理帧率', fps30:'30（推荐）', fps60:'60（用于60fps素材）',
+  h3DepthStyle:'深度风格', styleLabel:'风格',
+  styleGray:'灰度', styleInferno:'Inferno（热成像风）', styleViridis:'Viridis',
+  depthDirLabel:'深度方向', nearWhite:'近 = 白', nearBlack:'近 = 黑',
+  temporalLabel:'时间平滑', cancelBtn:'取消',
+  statusInit:'等待中 — 请选择视频。（首次运行会下载AI模型，之后会缓存在浏览器中）',
+  logIntro:'Depth Studio — 所有处理仅在此浏览器内完成（视频不会被上传）。',
+  webgpuOk:'加速：WebGPU 可用 ✓',
+  webgpuNo:'不支持 WebGPU — 将使用CPU处理（建议使用最新版 Chrome/Edge）',
+  notVideo:'不是视频文件：{name}',
+  videoReady:'视频就绪 — {name}（{w}×{h}，{d}秒）。请点击 Start。',
+  outDirSet:'已设置输出文件夹：{name}',
+  loadingLib:'正在加载 transformers.js 库…',
+  loadingDepth:'正在加载深度模型…（首次运行需下载，之后使用缓存）',
+  dlProgress:'模型下载中 {pct}% — {file}（{loaded}/{total}）',
+  depthReadyGpu:'深度模型就绪（WebGPU 加速）',
+  webgpuFallback:'无法使用 WebGPU → 回退到 CPU（WASM），处理速度会明显变慢：{msg}',
+  depthReadyCpu:'深度模型就绪（WASM/CPU）',
+  preparingModels:'正在准备模型…',
+  cancelling:'正在取消…', cancelledStatus:'已取消。', cancelledShort:'已取消',
+  procStartLog:'开始处理：{w}×{h}，{fps}fps，共{n}帧',
+  procStatus:'处理中… {w}×{h}，{fps}fps，共{n}帧 — 可在右侧预览实时查看进度。',
+  frameProgress:'第 {i}/{n} 帧 — 预计剩余{eta}',
+  etaMin:'{m}分钟', etaSec:'{s}秒',
+  encodingStatus:'正在编码视频…', encPct:'编码 {pct}%',
+  savedTo:'已保存:{name} → {path}',
+  savedDirNote:' — 已保存到文件夹 {path}',
+  dirSaveFail:'无法保存到文件夹，改用下载链接：{msg}',
+  resultLink:'结果:{name}（{size}）— 已生成下载链接',
+  downloadBtn:'下载 {name}',
+  saveAsBtn:'另存为…',
+  emptyBlob:'编码结果为空（{name}）。请降低分辨率后重试。',
+  downloadStarted:'开始下载: {name}（{size}）',
+  downloadFailed:'下载失败: {msg}',
+  clickToDownload:'处理完成 — 请点击下方下载按钮保存文件。',
+  doneStatus:'完成！已处理{n}帧（用时{s}秒）{note}',
+  doneLog:'完成！共用时{s}秒',
+  errLog:'错误:{msg}', errStatus:'因错误而中止。请查看日志。',
+  wcFallback:'WebCodecs 编码失败 → 回退到 MediaRecorder 实时录制：{msg}',
+  wcMissing:'浏览器不支持 WebCodecs → 使用 MediaRecorder 实时录制（可能丢帧）',
+  noH264:'没有支持此分辨率的 H.264 编码器',
+},
+};
+const HTML_LANG = { en:'en', ja:'ja', ko:'ko', zh:'zh-CN' };
+let lang = localStorage.getItem('dve_lang');
+if (!I18N[lang]) lang = 'en';
+
+function t(key, vars){
+  let s = I18N[lang][key] ?? I18N.en[key] ?? key;
+  if (vars) for (const k in vars) s = s.replaceAll('{' + k + '}', vars[k]);
+  return s;
+}
+
+const logEl = $('log');
+function log(msg, cls){
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+// 상태줄은 언어 전환 시 다시 그릴 수 있게 key+vars를 기억한다
+let lastStatus = ['statusInit', null];
+function setStatus(key, vars){
+  lastStatus = [key, vars];
+  $('statusLine').textContent = t(key, vars);
+}
+function setProgress(pct, text){
+  $('progressBar').style.width = pct + '%';
+  $('progressText').textContent = text ?? (Math.round(pct) + '%');
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+let outDirHandle = null;
+
+function applyLang(l){
+  lang = l;
+  localStorage.setItem('dve_lang', l);
+  document.documentElement.lang = HTML_LANG[l];
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+  if (!outDirHandle) $('outDirLabel').value = t('saveToDownloads');
+  document.querySelectorAll('#langGroup button').forEach(b => b.classList.toggle('active', b.dataset.lang === l));
+  updateRangeInfo();
+  setStatus(lastStatus[0], lastStatus[1]);
+}
+document.querySelectorAll('#langGroup button').forEach(b => {
+  b.onclick = () => applyLang(b.dataset.lang);
+});
+
+// ---------- 슬라이더 값 표시 ----------
+for (const [id, out] of [['temporal','temporalVal'],['lineW','lineWVal'],['jointR','jointRVal'],['conf','confVal']]){
+  $(id).addEventListener('input', () => $(out).textContent = $(id).value);
+}
+
+// ---------- 영상 로드 ----------
+const inVideo = $('inVideo');
+let videoFile = null;
+
+function loadVideoFile(file){
+  if (!file || !file.type.startsWith('video/')) { log(t('notVideo', { name: file?.name || '' }), 'warn'); return; }
+  videoFile = file;
+  inVideo.src = URL.createObjectURL(file);
+  inVideo.style.display = '';
+  $('inPlaceholder').style.display = 'none';
+  $('inStage').classList.remove('empty');
+  $('inName').textContent = file.name;
+  inVideo.onloadedmetadata = async () => {
+    if (!isFinite(inVideo.duration)){ // 일부 녹화 webm은 길이 메타데이터가 없음 → 시킹 트릭으로 복구
+      inVideo.currentTime = 1e7;
+      await new Promise(r => {
+        const h = () => { if (isFinite(inVideo.duration)){ inVideo.removeEventListener('durationchange', h); r(); } };
+        inVideo.addEventListener('durationchange', h);
+        setTimeout(r, 3000);
+      });
+      inVideo.currentTime = 0;
+    }
+    const d = inVideo.duration;
+    const chip = $('inChip');
+    chip.removeAttribute('data-i18n');
+    chip.textContent = `${inVideo.videoWidth}×${inVideo.videoHeight} · ${d.toFixed(1)}s`;
+    initRange(d);
+    $('startBtn').disabled = false;
+    setStatus('videoReady', { name: file.name, w: inVideo.videoWidth, h: inVideo.videoHeight, d: d.toFixed(1) });
+  };
+}
+$('pickVideoBtn').onclick = () => $('fileInput').click();
+$('fileInput').onchange = e => loadVideoFile(e.target.files[0]);
+const inStage = $('inStage');
+inStage.addEventListener('dragover', e => { e.preventDefault(); inStage.classList.add('drag'); });
+inStage.addEventListener('dragleave', () => inStage.classList.remove('drag'));
+inStage.addEventListener('drop', e => {
+  e.preventDefault(); inStage.classList.remove('drag');
+  loadVideoFile(e.dataTransfer.files[0]);
+});
+// 영상이 없을 때는 스테이지 전체가 업로드 버튼 (로드 후엔 재생 컨트롤과 충돌 방지)
+inStage.addEventListener('click', () => {
+  if ($('inPlaceholder').style.display !== 'none') $('fileInput').click();
+});
+
+// ---------- 변환 구간 (영상 하단 트림바, 최대 30초) ----------
+const MAX_SEG = 30;
+const rangeSel = { start: 0, end: 0 };   // end=0 이면 아직 영상 없음
+const trimBar = $('trimBar');
+let stripGen = 0;
+
+function updateRangeInfo(){
+  if (!rangeSel.end){ $('rangeInfo').textContent = ''; return; }
+  const len = rangeSel.end - rangeSel.start;
+  const fps = parseInt($('fps').value);
+  $('rangeInfo').textContent = t('rangeInfo', {
+    a: rangeSel.start.toFixed(1), b: rangeSel.end.toFixed(1),
+    len: len.toFixed(1), frames: Math.max(1, Math.round(len * fps)),
+  });
+}
+function layoutTrim(){
+  const d = isFinite(inVideo.duration) ? inVideo.duration : (rangeSel.end || 1);
+  const l = rangeSel.start / d * 100, r = rangeSel.end / d * 100;
+  $('trimRegion').style.left = l + '%';
+  $('trimRegion').style.width = (r - l) + '%';
+  $('trimL').style.left = `calc(${l}% - 7px)`;
+  $('trimR').style.left = `calc(${r}% - 7px)`;
+  $('shadeL').style.left = '0'; $('shadeL').style.width = l + '%';
+  $('shadeR').style.left = r + '%'; $('shadeR').style.width = (100 - r) + '%';
+  updateRangeInfo();
+}
+function initRange(duration){
+  rangeSel.start = 0;
+  rangeSel.end = Math.min(Math.max(0.2, duration), MAX_SEG);
+  $('trimWrap').style.display = '';
+  layoutTrim();
+  buildFilmstrip();
+}
+async function buildFilmstrip(){
+  const gen = ++stripGen;
+  const canvas = $('trimStrip');
+  const w = canvas.clientWidth || 640, h = canvas.clientHeight || 50;
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#14120e'; ctx.fillRect(0, 0, w, h);
+  try {
+    const v = document.createElement('video');
+    v.muted = true; v.preload = 'auto'; v.src = inVideo.src;
+    await new Promise(res => { v.onloadedmetadata = res; v.onerror = res; setTimeout(res, 3000); });
+    const d = isFinite(v.duration) ? v.duration : inVideo.duration;
+    if (!isFinite(d)) return;
+    const n = Math.max(6, Math.min(16, Math.floor(w / 72)));
+    const tw = w / n;
+    for (let i = 0; i < n; i++){
+      if (gen !== stripGen) return; // 새 영상이 로드되면 이전 작업 중단
+      await new Promise(res => {
+        const to = setTimeout(res, 1500);
+        v.onseeked = () => { clearTimeout(to); res(); };
+        v.currentTime = Math.min((i + .5) / n * d, Math.max(0, d - 0.05));
+      });
+      const vw = v.videoWidth, vh = v.videoHeight;
+      if (!vw) continue;
+      const s = Math.max(tw / vw, h / vh); // cover 크롭
+      const sw = tw / s, sh = h / s;
+      ctx.drawImage(v, (vw - sw) / 2, (vh - sh) / 2, sw, sh, i * tw, 0, tw, h);
+    }
+    v.removeAttribute('src');
+  } catch(e){ /* 필름스트립 실패는 치명적 아님 — 어두운 바만 유지 */ }
+}
+function trimTimeFromEvent(ev){
+  const rect = trimBar.getBoundingClientRect();
+  const d = isFinite(inVideo.duration) ? inVideo.duration : 1;
+  return Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width)) * d;
+}
+let dragMode = null, grabOffset = 0;
+function startDrag(mode){
+  return ev => {
+    if (!rangeSel.end) return;
+    dragMode = mode;
+    grabOffset = trimTimeFromEvent(ev) - rangeSel.start;
+    ev.target.setPointerCapture?.(ev.pointerId);
+    ev.preventDefault();
+  };
+}
+$('trimL').addEventListener('pointerdown', startDrag('l'));
+$('trimR').addEventListener('pointerdown', startDrag('r'));
+$('trimRegion').addEventListener('pointerdown', startDrag('m'));
+window.addEventListener('pointermove', ev => {
+  if (!dragMode) return;
+  const d = isFinite(inVideo.duration) ? inVideo.duration : rangeSel.end;
+  const tp = trimTimeFromEvent(ev);
+  if (dragMode === 'l'){
+    rangeSel.start = Math.min(Math.max(tp, rangeSel.end - MAX_SEG, 0), rangeSel.end - 0.1);
+    inVideo.currentTime = rangeSel.start;
+  } else if (dragMode === 'r'){
+    rangeSel.end = Math.max(Math.min(tp, rangeSel.start + MAX_SEG, d), rangeSel.start + 0.1);
+    inVideo.currentTime = rangeSel.end;
+  } else {
+    const len = rangeSel.end - rangeSel.start;
+    const ns = Math.min(Math.max(tp - grabOffset, 0), d - len);
+    rangeSel.start = ns; rangeSel.end = ns + len;
+    inVideo.currentTime = ns;
+  }
+  layoutTrim();
+});
+window.addEventListener('pointerup', () => { dragMode = null; });
+$('rangeResetBtn').onclick = () => { if (videoFile && isFinite(inVideo.duration)) initRange(inVideo.duration); };
+$('fps').addEventListener('change', updateRangeInfo);
+
+// ---------- 출력 폴더 (File System Access API) ----------
+$('pickDirBtn').onclick = async () => {
+  try {
+    outDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    $('outDirLabel').value = outDirHandle.name;
+    log(t('outDirSet', { name: outDirHandle.name }));
+  } catch(e) { /* 사용자가 취소 */ }
+};
+async function saveToDir(dir, name, blob){
+  const fh = await dir.getFileHandle(name, { create: true });
+  const w = await fh.createWritable();
+  await w.write(blob);
+  await w.close();
+}
+
+function sanitizeFilename(name){
+  const cleaned = String(name || 'depth_output')
+    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned.slice(0, 180) || 'depth_output.bin';
+}
+
+function extFromName(name){
+  const m = /\.([a-z0-9]+)$/i.exec(name || '');
+  return m ? m[1].toLowerCase() : 'bin';
+}
+
+function mimeFromName(name, fallback){
+  const ext = extFromName(name);
+  if (ext === 'mp4') return 'video/mp4';
+  if (ext === 'webm') return 'video/webm';
+  if (ext === 'json') return 'application/json';
+  return fallback || 'application/octet-stream';
+}
+
+/** User-gesture-safe download: prefers Save Picker, then <a download>, then open tab. */
+async function downloadBlob(name, blob){
+  const safeName = sanitizeFilename(name);
+  if (!blob || !blob.size){
+    throw new Error(t('emptyBlob', { name: safeName }));
+  }
+  const typed = blob.type
+    ? blob
+    : new Blob([await blob.arrayBuffer()], { type: mimeFromName(safeName, 'application/octet-stream') });
+
+  // 1) File System Access API — best UX (explicit save dialog on click)
+  if (window.showSaveFilePicker){
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: safeName,
+        types: [{
+          description: 'Export',
+          accept: { [typed.type || 'application/octet-stream']: ['.' + extFromName(safeName)] },
+        }],
+      });
+      const w = await handle.createWritable();
+      await w.write(typed);
+      await w.close();
+      log(t('downloadStarted', { name: safeName, size: fmtBytes(typed.size) }), 'ok');
+      return 'picker';
+    } catch(e){
+      // user cancelled picker — not an error
+      if (e && (e.name === 'AbortError' || e.name === 'NotAllowedError')) return 'cancelled';
+      // fall through to anchor method
+      console.warn('showSaveFilePicker failed', e);
+    }
+  }
+
+  // 2) Classic anchor download
+  const url = URL.createObjectURL(typed);
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = safeName;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // revoke after browser has a chance to start the download
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    log(t('downloadStarted', { name: safeName, size: fmtBytes(typed.size) }), 'ok');
+    return 'anchor';
+  } catch(e){
+    // 3) Last resort: open in new tab
+    try {
+      window.open(url, '_blank', 'noopener');
+      log(t('downloadStarted', { name: safeName, size: fmtBytes(typed.size) }), 'ok');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      return 'tab';
+    } catch(e2){
+      URL.revokeObjectURL(url);
+      throw e2 || e;
+    }
+  }
+}
+
+function renderDownloadButtons(resEl, results){
+  resEl.innerHTML = '';
+  for (let i = 0; i < results.length; i++){
+    const [name, blob] = results[i];
+    const safeName = sanitizeFilename(name);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'dl-btn' + (i === 0 ? ' dl-primary' : '');
+    btn.textContent = '⬇ ' + t('downloadBtn', { name: safeName });
+    if (blob && blob.size){
+      const meta = document.createElement('span');
+      meta.className = 'dl-meta';
+      meta.textContent = fmtBytes(blob.size);
+      btn.appendChild(document.createTextNode(' '));
+      // put size in title for compact UI
+      btn.title = `${safeName} · ${fmtBytes(blob.size)}`;
+    }
+    btn.onclick = async () => {
+      btn.disabled = true;
+      try {
+        await downloadBlob(safeName, blob);
+      } catch(e){
+        log(t('downloadFailed', { msg: e?.message || e }), 'err');
+      } finally {
+        btn.disabled = false;
+      }
+    };
+    resEl.appendChild(btn);
+  }
+}
+
+// ---------- 동시 재생 ----------
+const outVideoEl = $('outVideo');
+$('syncPlayBtn').onclick = () => {
+  inVideo.currentTime = 0; outVideoEl.currentTime = 0;
+  inVideo.play(); outVideoEl.play();
+};
+
+// ---------- 컬러맵 ----------
+const CMAP_ANCHORS = {
+  inferno: [[0,0,4],[87,16,110],[188,55,84],[249,142,9],[252,255,164]],
+  viridis: [[68,1,84],[59,82,139],[33,145,140],[94,201,98],[253,231,37]],
+};
+function makeLUT(name){
+  const lut = new Uint8Array(256*3);
+  if (name === 'gray'){
+    for (let i=0;i<256;i++){ lut[i*3]=i; lut[i*3+1]=i; lut[i*3+2]=i; }
+    return lut;
+  }
+  const a = CMAP_ANCHORS[name];
+  for (let i=0;i<256;i++){
+    const t2 = i/255 * (a.length-1);
+    const k = Math.min(a.length-2, Math.floor(t2));
+    const f = t2 - k;
+    for (let c=0;c<3;c++) lut[i*3+c] = Math.round(a[k][c]*(1-f) + a[k+1][c]*f);
+  }
+  return lut;
+}
+
+// ---------- 스켈레톤 정의 (MediaPipe 33 landmarks, OpenPose풍 무지개 배색) ----------
+const LM_NAMES = ["nose","left_eye_inner","left_eye","left_eye_outer","right_eye_inner","right_eye","right_eye_outer","left_ear","right_ear","mouth_left","mouth_right","left_shoulder","right_shoulder","left_elbow","right_elbow","left_wrist","right_wrist","left_pinky","right_pinky","left_index","right_index","left_thumb","right_thumb","left_hip","right_hip","left_knee","right_knee","left_ankle","right_ankle","left_heel","right_heel","left_foot_index","right_foot_index"];
+const LIMBS = [
+  [11,12,'#ff4400'],                                   // 어깨
+  [12,14,'#ff8800'],[14,16,'#ffcc00'],                 // 오른팔
+  [11,13,'#ccff00'],[13,15,'#88ff00'],                 // 왼팔
+  [16,20,'#ffee55'],[15,19,'#aaff55'],                 // 손
+  [12,24,'#22ff44'],[11,23,'#00ffaa'],                 // 몸통 측면
+  [23,24,'#00ffee'],                                   // 골반
+  [24,26,'#00ccff'],[26,28,'#0077ff'],[28,32,'#0033ff'], // 오른다리
+  [23,25,'#4455ff'],[25,27,'#8833ff'],[27,31,'#cc22ff'], // 왼다리
+  [0,2,'#ff2266'],[2,7,'#ff44aa'],[0,5,'#ff22cc'],[5,8,'#ff66ee'], // 얼굴
+];
+const NECK_COLOR = '#ff2200';
+
+function drawSkeleton(ctx, persons, W, H, opt){
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const lms of persons){
+    const pt = i => ({ x: lms[i].x * W, y: lms[i].y * H, v: lms[i].visibility ?? 1 });
+    if (opt.glow){ ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = opt.lineW * 2.2; }
+    // 목: 어깨 중점 → 코
+    const s1 = pt(11), s2 = pt(12), nose = pt(0);
+    if (s1.v > opt.conf && s2.v > opt.conf && nose.v > opt.conf){
+      ctx.strokeStyle = NECK_COLOR; ctx.lineWidth = opt.lineW;
+      ctx.beginPath();
+      ctx.moveTo((s1.x+s2.x)/2, (s1.y+s2.y)/2);
+      ctx.lineTo(nose.x, nose.y);
+      ctx.stroke();
+    }
+    for (const [a,b,color] of LIMBS){
+      const pa = pt(a), pb = pt(b);
+      if (pa.v < opt.conf || pb.v < opt.conf) continue;
+      ctx.strokeStyle = color; ctx.lineWidth = opt.lineW;
+      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+    }
+    if (opt.jointR > 0){
+      const seen = new Set();
+      for (const [a,b,color] of LIMBS){
+        for (const [i,c] of [[a,color],[b,color]]){
+          if (seen.has(i)) continue; seen.add(i);
+          const p = pt(i);
+          if (p.v < opt.conf) continue;
+          ctx.fillStyle = c;
+          ctx.beginPath(); ctx.arc(p.x, p.y, opt.jointR, 0, Math.PI*2); ctx.fill();
+        }
+      }
+    }
+  }
+  ctx.restore();
+}
+
+// ---------- 모델 로딩 ----------
+let transformersMod = null, depthPipe = null, depthPipeKey = '';
+let visionMod = null, poseLandmarker = null, poseKey = '';
+let mpTs = 0; // MediaPipe 단조증가 타임스탬프
+
+function fmtBytes(b){ return (b/1024/1024).toFixed(1) + 'MB'; }
+
+async function ensureDepth(modelId){
+  if (depthPipe && depthPipeKey === modelId) return;
+  if (!transformersMod){
+    setStatus('loadingLib');
+    transformersMod = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2/+esm');
+    transformersMod.env.allowLocalModels = false;
+    if (!('caches' in self)) transformersMod.env.useBrowserCache = false;
+  }
+  const { pipeline } = transformersMod;
+  let lastLogged = {};
+  const progress_callback = p => {
+    if (p.status === 'progress' && p.total){
+      const pct = Math.round(p.loaded / p.total * 100);
+      if (pct !== lastLogged[p.file] && pct % 10 === 0){
+        lastLogged[p.file] = pct;
+        setProgress(pct, t('dlProgress', { pct, file: p.file, loaded: fmtBytes(p.loaded), total: fmtBytes(p.total) }));
+      }
+    }
+  };
+  setStatus('loadingDepth');
+  const hasWebGPU = !!navigator.gpu;
+  try {
+    if (!hasWebGPU) throw new Error('WebGPU unsupported');
+    depthPipe = await pipeline('depth-estimation', modelId, { device: 'webgpu', dtype: 'fp16', progress_callback });
+    log(t('depthReadyGpu'), 'ok');
+  } catch(e) {
+    log(t('webgpuFallback', { msg: e.message }), 'warn');
+    depthPipe = await pipeline('depth-estimation', modelId, { progress_callback });
+    log(t('depthReadyCpu'), 'ok');
+  }
+  depthPipeKey = modelId;
+}
+
+async function ensurePose(variant, numPoses){
+  const key = variant + '_' + numPoses;
+  if (poseLandmarker && poseKey === key) return;
+  if (poseLandmarker){ poseLandmarker.close(); poseLandmarker = null; }
+  setStatus('loadingPose');
+  if (!visionMod){
+    visionMod = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm');
+  }
+  const { FilesetResolver, PoseLandmarker } = visionMod;
+  const fileset = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+  const modelUrl = `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${variant}/float16/1/pose_landmarker_${variant}.task`;
+  poseLandmarker = await PoseLandmarker.createFromOptions(fileset, {
+    baseOptions: { modelAssetPath: modelUrl, delegate: 'GPU' },
+    runningMode: 'VIDEO',
+    numPoses: numPoses,
+    minPoseDetectionConfidence: 0.3,
+    minPosePresenceConfidence: 0.3,
+    minTrackingConfidence: 0.3,
+  });
+  poseKey = key;
+  log(t('poseReady', { variant, n: numPoses }), 'ok');
+}
+
+// ---------- 프레임 시킹 ----------
+function seekTo(video, tSec){
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { cleanup(); resolve(); }, 4000); // 시킹 멈춤 방지
+    function onSeeked(){ cleanup(); resolve(); }
+    function cleanup(){ clearTimeout(timer); video.removeEventListener('seeked', onSeeked); }
+    video.addEventListener('seeked', onSeeked);
+    video.currentTime = tSec;
+  });
+}
+
+// ---------- 메인 처리 ----------
+let cancelled = false;
+let running = false;
+
+$('cancelBtn').onclick = () => { cancelled = true; setStatus('cancelling'); };
+
+$('startBtn').onclick = async () => {
+  if (running || !videoFile) return;
+  running = true; cancelled = false;
+  $('startBtn').disabled = true;
+  $('cancelBtn').disabled = false;
+  $('results').innerHTML = '';
+  $('syncPlayBtn').disabled = true;
+  try {
+    await runExtraction();
+  } catch(e) {
+    console.error(e);
+    log(t('errLog', { msg: e?.message || e }), 'err');
+    setStatus('errStatus');
+  } finally {
+    running = false;
+    $('startBtn').disabled = false;
+    $('cancelBtn').disabled = true;
+  }
+};
+
+async function runExtraction(){
+  const mode       = $('mode').value;
+  const exportJson = $('exportJson').checked;
+  const needDepth  = mode === 'overlay' || mode === 'depth';
+  const needPose   = mode !== 'depth' || exportJson;
+  const fps      = parseInt($('fps').value);
+  const maxSide  = parseInt($('maxSide').value);
+  const style    = $('depthStyle').value;
+  const invert   = $('depthInvert').value === '1';
+  const temporal = parseFloat($('temporal').value);
+  const skOpt = {
+    lineW:  parseInt($('lineW').value),
+    jointR: parseInt($('jointR').value),
+    conf:   parseFloat($('conf').value),
+    glow:   $('glow').checked,
+  };
+
+  // 모델 로딩
+  setProgress(0, t('preparingModels'));
+  if (needDepth) await ensureDepth($('depthModel').value);
+  if (needPose)  await ensurePose($('poseModel').value, parseInt($('numPoses').value));
+  if (cancelled) { setStatus('cancelledStatus'); setProgress(0, t('cancelledShort')); return; }
+
+  // 해상도 계산 (인코더 호환 위해 짝수로)
+  const vw = inVideo.videoWidth, vh = inVideo.videoHeight;
+  let scale = 1;
+  if (maxSide > 0 && Math.max(vw, vh) > maxSide) scale = maxSide / Math.max(vw, vh);
+  const W = Math.round(vw * scale / 2) * 2;
+  const H = Math.round(vh * scale / 2) * 2;
+
+  const duration = inVideo.duration;
+  const selStart = Math.min(rangeSel.start, Math.max(0, duration - 0.2));
+  const selEnd = Math.min(Math.max(rangeSel.end || duration, selStart + 0.1), duration);
+  const segDur = selEnd - selStart;
+  const total = Math.max(1, Math.round(segDur * fps));
+  log(t('procStartLog', { w: W, h: H, fps, n: total }));
+  setStatus('procStatus', { w: W, h: H, fps, n: total });
+
+  // 캔버스 준비
+  const srcCanvas = document.createElement('canvas');
+  srcCanvas.width = W; srcCanvas.height = H;
+  const sctx = srcCanvas.getContext('2d', { willReadFrequently: true });
+  const outCanvas = $('outCanvas');
+  outCanvas.width = W; outCanvas.height = H;
+  const octx = outCanvas.getContext('2d');
+  outCanvas.style.display = '';
+  outVideoEl.style.display = 'none';
+  $('outPlaceholder').style.display = 'none';
+
+  const lut = makeLUT(style);
+  const depthCanvas = document.createElement('canvas');
+  const dctx = depthCanvas.getContext('2d');
+  let smoothBuf = null;
+
+  const { RawImage } = transformersMod || {};
+  inVideo.pause();
+
+  const frames = [];      // JPEG Blob per frame
+  const posesData = [];
+  const tsStep = Math.max(1, Math.round(1000 / fps));
+  const t0 = performance.now();
+
+  for (let i = 0; i < total; i++){
+    if (cancelled) break;
+    const tSec = Math.min(selStart + i / fps, Math.max(0, duration - 0.001));
+    await seekTo(inVideo, tSec);
+    sctx.drawImage(inVideo, 0, 0, W, H);
+
+    // --- Pose ---
+    let persons = [];
+    if (needPose){
+      mpTs += tsStep;
+      const res = poseLandmarker.detectForVideo(srcCanvas, mpTs);
+      persons = res.landmarks || [];
+      if (exportJson){
+        posesData.push({
+          frame: i, time: +tSec.toFixed(4),
+          persons: persons.map(lms => ({
+            keypoints: lms.map((p, k) => ({
+              name: LM_NAMES[k],
+              x: +(p.x * W).toFixed(2), y: +(p.y * H).toFixed(2),
+              z: +p.z.toFixed(4), visibility: +(p.visibility ?? 0).toFixed(3),
+            })),
+          })),
+        });
+      }
+    }
+
+    // --- Depth ---
+    if (needDepth){
+      const id = sctx.getImageData(0, 0, W, H);
+      const img = new RawImage(id.data, W, H, 4);
+      const out = await depthPipe(img);
+      const d = out.depth; // RawImage, 1채널, 프레임별 min-max 정규화됨
+      const dw = d.width, dh = d.height, dd = d.data;
+      if (!smoothBuf || smoothBuf.length !== dw * dh) { smoothBuf = new Float32Array(dw * dh); smoothBuf.set(dd); }
+      const imgData = new ImageData(dw, dh);
+      const px = imgData.data;
+      const a = temporal, b = 1 - temporal;
+      for (let j = 0; j < dw * dh; j++){
+        const sm = smoothBuf[j] = smoothBuf[j] * a + dd[j] * b;
+        let v = Math.max(0, Math.min(255, Math.round(sm)));
+        if (invert) v = 255 - v;
+        px[j*4]   = lut[v*3];
+        px[j*4+1] = lut[v*3+1];
+        px[j*4+2] = lut[v*3+2];
+        px[j*4+3] = 255;
+      }
+      if (depthCanvas.width !== dw){ depthCanvas.width = dw; depthCanvas.height = dh; }
+      dctx.putImageData(imgData, 0, 0);
+    }
+
+    // --- 합성 ---
+    if (mode === 'skeleton'){
+      octx.fillStyle = '#000'; octx.fillRect(0, 0, W, H);
+    } else if (mode === 'origskel'){
+      octx.drawImage(srcCanvas, 0, 0);
+    } else {
+      octx.drawImage(depthCanvas, 0, 0, W, H);
+    }
+    if (mode !== 'depth' && persons.length) drawSkeleton(octx, persons, W, H, skOpt);
+    const frameBlob = await new Promise(r => outCanvas.toBlob(r, 'image/jpeg', 0.92));
+    if (!frameBlob) throw new Error('Frame capture failed (toBlob returned null)');
+    frames.push(frameBlob);
+
+    const pct = (i + 1) / total * 90; // 인코딩 몫으로 10% 남김
+    const elapsed = (performance.now() - t0) / 1000;
+    const eta = elapsed / (i + 1) * (total - i - 1);
+    const etaStr = eta > 60 ? t('etaMin', { m: Math.ceil(eta/60) }) : t('etaSec', { s: Math.ceil(eta) });
+    setProgress(pct, t('frameProgress', { i: i + 1, n: total, eta: etaStr }));
+  }
+
+  if (cancelled){ setStatus('cancelledStatus'); setProgress(0, t('cancelledShort')); return; }
+
+  // --- 인코딩 ---
+  setStatus('encodingStatus');
+  const videoBlob = await encodeFrames(frames, fps, W, H);
+  if (cancelled){ setStatus('cancelledStatus'); setProgress(0, t('cancelledShort')); return; }
+
+  // --- 결과 정리 ---
+  const base = videoFile.name.replace(/\.[^.]+$/, '');
+  const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15).replace(/(\d{8})(\d{6}).*/, '$1_$2');
+  const vidExt = videoBlob.type.includes('mp4') ? 'mp4' : 'webm';
+  const vidName = `${base}_${mode}.${vidExt}`;
+  const results = [[vidName, videoBlob]];
+  if (exportJson && posesData.length){
+    const jsonBlob = new Blob([JSON.stringify({
+      source: videoFile.name, width: W, height: H, fps, frames: posesData.length,
+      format: 'mediapipe-pose-33', coordinates: 'pixels (top-left origin)',
+      data: posesData,
+    })], { type: 'application/json' });
+    results.push([`${base}_poses.json`, jsonBlob]);
+  }
+
+  // 출력 폴더 저장 + 다운로드 버튼 (클릭 시 사용자 제스처로 저장)
+  const resEl = $('results');
+  let savedDirNote = '';
+
+  // 빈 blob 검사
+  for (const [name, blob] of results){
+    if (!blob || !blob.size){
+      throw new Error(t('emptyBlob', { name: sanitizeFilename(name) }));
+    }
+  }
+
+  if (outDirHandle){
+    try {
+      const runDir = await outDirHandle.getDirectoryHandle(`${base}_${stamp}`, { create: true });
+      for (const [name, blob] of results){
+        await saveToDir(runDir, sanitizeFilename(name), blob);
+        log(t('savedTo', { name: sanitizeFilename(name), path: `${outDirHandle.name}\\${base}_${stamp}\\` }), 'ok');
+      }
+      savedDirNote = t('savedDirNote', { path: `${outDirHandle.name}\\${base}_${stamp}\\` });
+    } catch(e){
+      log(t('dirSaveFail', { msg: e.message }), 'warn');
+    }
+  }
+
+  // 항상 클릭형 다운로드 버튼 제공 (긴 처리 후 auto-download는 브라우저가 차단함)
+  renderDownloadButtons(resEl, results.map(([n, b]) => [sanitizeFilename(n), b]));
+  log(t('clickToDownload'), 'ok');
+  for (const [name, blob] of results){
+    log(t('resultLink', { name: sanitizeFilename(name), size: fmtBytes(blob.size) }), 'ok');
+  }
+
+  // 출력 미리보기
+  outVideoEl.src = URL.createObjectURL(videoBlob);
+  outVideoEl.style.display = '';
+  outCanvas.style.display = 'none';
+  const outChip = $('outChip');
+  outChip.removeAttribute('data-i18n');
+  outChip.textContent = `${vidName} · ${frames.length}f · ${(frames.length/fps).toFixed(1)}s`;
+  $('syncPlayBtn').disabled = false;
+
+  const totalSec = ((performance.now() - t0) / 1000).toFixed(1);
+  setProgress(100, '100%');
+  setStatus('doneStatus', { n: frames.length, s: totalSec, note: savedDirNote });
+  log(t('doneLog', { s: totalSec }), 'ok');
+}
+
+// ---------- 프레임 → 영상 인코딩 ----------
+// 1순위: WebCodecs 프레임 정밀 인코딩 (mp4, 프레임 누락 0 — 설정 FPS가 곧 실효 FPS)
+// 폴백  : MediaRecorder 실시간 녹화 (webm, 브라우저가 밀리면 프레임 누락 가능)
+async function encodeFrames(frames, fps, W, H){
+  if ('VideoEncoder' in window){
+    try {
+      return await encodeFramesWebCodecs(frames, fps, W, H);
+    } catch(e){
+      log(t('wcFallback', { msg: e?.message || e }), 'warn');
+    }
+  } else {
+    log(t('wcMissing'), 'warn');
+  }
+  return encodeFramesRealtime(frames, fps, W, H);
+}
+
+async function pickAvcCodec(W, H, fps){
+  // 높은 프로파일/레벨부터 시도 (4K까지 커버), 안 되면 낮은 쪽으로
+  for (const codec of ['avc1.640033','avc1.64002A','avc1.640028','avc1.4D0028','avc1.42E01F']){
+    try {
+      const { supported } = await VideoEncoder.isConfigSupported({ codec, width: W, height: H, framerate: fps });
+      if (supported) return codec;
+    } catch(e) { /* 다음 후보 */ }
+  }
+  return null;
+}
+
+async function encodeFramesWebCodecs(frames, fps, W, H){
+  const { Muxer, ArrayBufferTarget } = await import('https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/+esm');
+  const codec = await pickAvcCodec(W, H, fps);
+  if (!codec) throw new Error(t('noH264'));
+  const target = new ArrayBufferTarget();
+  const muxer = new Muxer({
+    target,
+    video: { codec: 'avc', width: W, height: H },
+    fastStart: 'in-memory',
+  });
+  let encError = null;
+  const encoder = new VideoEncoder({
+    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+    error: e => { encError = e; },
+  });
+  encoder.configure({ codec, width: W, height: H, framerate: fps, bitrate: 12_000_000 });
+  const usPerFrame = 1_000_000 / fps;
+  for (let i = 0; i < frames.length; i++){
+    if (cancelled) break;
+    if (encError) throw encError;
+    const bmp = await createImageBitmap(frames[i]);
+    const vf = new VideoFrame(bmp, { timestamp: Math.round(i * usPerFrame), duration: Math.round(usPerFrame) });
+    encoder.encode(vf, { keyFrame: i % (fps * 2) === 0 });
+    vf.close(); bmp.close();
+    if (encoder.encodeQueueSize > 8){
+      await new Promise(r => encoder.addEventListener('dequeue', r, { once: true }));
+    }
+    if (i % Math.max(1, fps) === 0){
+      setProgress(90 + (i / frames.length) * 10, t('encPct', { pct: Math.round(i / frames.length * 100) }));
+    }
+  }
+  await encoder.flush();
+  if (encError) throw encError;
+  encoder.close();
+  muxer.finalize();
+  const mp4buf = target.buffer;
+  if (!mp4buf || mp4buf.byteLength < 32){
+    throw new Error('WebCodecs produced empty/invalid MP4');
+  }
+  return new Blob([mp4buf], { type: 'video/mp4' });
+}
+
+function pickMime(){
+  for (const m of ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']){
+    if (MediaRecorder.isTypeSupported(m)) return m;
+  }
+  return '';
+}
+async function encodeFramesRealtime(frames, fps, W, H){
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const first = await createImageBitmap(frames[0]);
+  ctx.drawImage(first, 0, 0);
+
+  const stream = c.captureStream(fps);
+  const mime = pickMime();
+  const rec = new MediaRecorder(stream, { mimeType: mime || undefined, videoBitsPerSecond: 12_000_000 });
+  const chunks = [];
+  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  const done = new Promise(res => rec.onstop = res);
+  rec.start(500);
+
+  const interval = 1000 / fps;
+  let next = performance.now();
+  let cur = first;
+  for (let i = 0; i < frames.length; i++){
+    if (cancelled) break;
+    ctx.drawImage(cur, 0, 0);
+    if (cur !== first || i > 0) cur.close?.();
+    const nextP = i + 1 < frames.length ? createImageBitmap(frames[i + 1]) : null;
+    next += interval;
+    const wait = next - performance.now();
+    if (wait > 0) await sleep(wait);
+    if (nextP) cur = await nextP;
+    if (i % Math.max(1, Math.round(fps)) === 0){
+      setProgress(90 + (i / frames.length) * 10, t('encPct', { pct: Math.round(i / frames.length * 100) }));
+    }
+  }
+  await sleep(interval * 2);
+  rec.stop();
+  await done;
+  const webm = new Blob(chunks, { type: mime || 'video/webm' });
+  if (!webm.size) throw new Error('MediaRecorder produced empty WebM');
+  return webm;
+}
+
+// ---------- 초기 안내 ----------
+applyLang(lang);
+log(t('logIntro'));
+log(t(navigator.gpu ? 'webgpuOk' : 'webgpuNo'), navigator.gpu ? 'ok' : 'warn');
+</script>
+</body>
+</html>
