@@ -82,6 +82,16 @@ DEPTHMAP_STUDIO_HOST=127.0.0.1
 DEPTHMAP_STUDIO_PORT=8790
 ```
 
+### Clean-machine dependency policy
+
+The web app has no Python runtime or Python package dependencies. `npm ci`
+installs Node packages only into this repository's local `node_modules`; no
+global `npm` install is required or recommended.
+
+If Python tooling is introduced later, it must use a project-local `uv`
+environment (`.venv`) and a committed lockfile. Do not install project Python
+packages with global `pip`. Docker remains the fully isolated runtime option.
+
 ## Docker / Compose
 
 ```bash
