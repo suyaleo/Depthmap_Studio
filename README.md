@@ -1,59 +1,154 @@
-# DepthMap Maker
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/branding/leo-studio-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="assets/branding/leo-studio-light.png">
+    <img src="assets/branding/leo-studio-light.png" alt="Leo Studio" width="760">
+  </picture>
 
-Browser-local depth-map video maker inspired by [depth.cards](https://depth.cards/).  
-Ubuntu serves static files only; all inference runs in the user's browser.
+  <h1>Depthmap Studio</h1>
 
-## Features
+  <p><strong>Turn ordinary video into depth maps and pose-aware motion data—privately, in your browser.</strong></p>
 
-- **Depth Anything V2** via Transformers.js (WebGPU → WASM fallback)
-- Optional **MediaPipe Pose** skeleton overlay
-- Segment trim (max 30s), colormap styles, temporal smoothing
-- Export MP4/WebM + optional `poses.json`
-- **Click-to-download only** (no auto download)
-- EN / JP / KR / CN UI
+  <p>
+    <a href="https://github.com/suyaleo/Depthmap_Studio/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/suyaleo/Depthmap_Studio/actions/workflows/ci.yml/badge.svg"></a>
+    <a href="https://github.com/suyaleo/Depthmap_Studio/actions/workflows/pages.yml"><img alt="Web" src="https://github.com/suyaleo/Depthmap_Studio/actions/workflows/pages.yml/badge.svg"></a>
+    <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-ff783d.svg"></a>
+    <img alt="macOS arm64" src="https://img.shields.io/badge/macOS-arm64-242321.svg">
+    <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ED.svg?logo=docker&logoColor=white">
+  </p>
 
-## Architecture
+  <p>
+    <a href="https://suyaleo.github.io/Depthmap_Studio/"><strong>Launch Web App</strong></a>
+    ·
+    <a href="#docker--compose"><strong>Run with Docker</strong></a>
+    ·
+    <a href="#macos-desktop"><strong>Build for macOS</strong></a>
+  </p>
+</div>
 
-| Layer | Role |
-|-------|------|
-| Static host | Python `http.server` or any static server |
-| Client | Transformers.js + MediaPipe + WebCodecs/mp4-muxer |
-| Privacy | Source videos never leave the browser |
+---
 
-## Local run
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/workspace-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/workspace-light.png">
+  <img src="docs/screenshots/workspace-light.png" alt="Depthmap Studio workspace">
+</picture>
+
+Depthmap Studio is a local-first creator tool for extracting temporal depth maps
+and optional MediaPipe pose landmarks from video. The application runs as one
+implementation across the web, Docker, and the macOS desktop package. Source
+video frames are processed in the browser or Electron renderer and are never
+uploaded to the static host.
+
+## Highlights
+
+- **Depth Anything V2** through Transformers.js with WebGPU → WASM fallback
+- **Pose-aware output** with optional MediaPipe skeleton overlay and `poses.json`
+- **Precise segment trim** for clips up to 30 seconds
+- **Depth styling** with grayscale, Inferno, Viridis, inversion, and smoothing
+- **Frame-accurate output** through WebCodecs MP4 with MediaRecorder fallback
+- **Four interface languages**: Korean, English, Japanese, and Chinese
+- **Complete Studio theming**: Light, Dark, and live System preference
+- **Local by design**: explicit model download, processing, progress, and errors
+
+## Distribution channels
+
+| Channel | What it provides | Command / URL |
+|---|---|---|
+| Web | Full static client-side application | `npm run build:web` |
+| GitHub Pages | Hosted static application | https://suyaleo.github.io/Depthmap_Studio/ |
+| Docker | Non-root nginx runtime with health/version endpoints | `docker compose up --build -d` |
+| macOS | arm64 Electron application and DMG | `npm run dist:mac` |
+
+The Web channel is the full product: inference, rendering, and encoding happen
+client-side. The server only delivers static files and health metadata. The
+first model run requires internet access; model files are then cached by the
+browser profile.
+
+## Web app
+
+Requirements: Node.js 24 or newer.
 
 ```bash
-python3 -m http.server 8790 --bind 127.0.0.1
-# open http://127.0.0.1:8790
+npm ci
+npm run build:web
+npm run serve:web
 ```
 
-Use **HTTPS** (e.g. Tailscale Serve) for WebGPU and File System Access APIs.
+Open `http://localhost:8790`. Runtime configuration:
 
-## Deploy (Ubuntu + Total Hub)
+```bash
+DEPTHMAP_STUDIO_HOST=127.0.0.1
+DEPTHMAP_STUDIO_PORT=8790
+```
 
-Typical layout used in this lab:
+## Docker / Compose
+
+```bash
+cp .env.example .env
+docker compose up --build -d
+curl http://localhost:8790/api/health
+curl http://localhost:8790/api/version
+```
+
+The container runs as UID `101`, exposes port `8790`, and reserves `/data` as
+the persistent application-data volume. Source videos remain in the browser and
+are not written to the container volume.
+
+Published image name:
 
 ```text
-App files:     ~/apps/depth-studio  (or this repo checkout)
-Local port:    127.0.0.1:8790
-Tailscale:     https://<host>:8451  →  proxy to 8790
-Total Hub:     registers "Depth Studio" health card
+ghcr.io/suyaleo/depthmap-studio
 ```
+
+Only architectures proven by the release workflow are attached to a release.
+
+## macOS desktop
 
 ```bash
-# user systemd unit example
-systemctl --user enable --now depth-studio.service
-tailscale serve --bg --https=8451 http://127.0.0.1:8790
+npm ci
+npm run test:smoke
+npm run dist:mac
 ```
 
-## Usage
+The local development build is ad-hoc signed. Public release artifacts require
+the release workflow and may still require Apple notarization credentials for a
+warning-free first launch on another Mac.
 
-1. Select / drop a video  
-2. Adjust mode, model, resolution  
-3. Press **Start** (header)  
-4. When finished, click the **download** button under the output panel  
+## How it works
 
-## License
+```mermaid
+flowchart LR
+  A["Local video"] --> B["Browser / Electron renderer"]
+  M["Runtime-fetched AI models"] --> B
+  B --> C["Depth + optional pose inference"]
+  C --> D["WebCodecs / MediaRecorder encoding"]
+  D --> E["User-approved local save"]
+```
 
-Private lab project. Model weights are subject to their upstream licenses
-(Depth Anything V2, MediaPipe, Transformers.js).
+No application API receives video data. Transformers.js, MediaPipe, and model
+files are loaded directly from the upstream providers recorded in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
+## Development and validation
+
+```bash
+npm run test:smoke
+npm run test:e2e
+npm run test:visual
+npm run build:web
+npm run validate:release
+```
+
+Docker and Compose readiness are also validated by GitHub Actions before public
+release artifacts are created.
+
+## Security, license, and branding
+
+- Source code: [Apache License 2.0](LICENSE)
+- Attribution: [NOTICE](NOTICE) and [Third-Party Notices](THIRD_PARTY_NOTICES.md)
+- Vulnerability reporting: [SECURITY.md](SECURITY.md)
+- Leo Studio names and logos: [TRADEMARKS.md](TRADEMARKS.md)
+
+The Apache-2.0 license does not grant permission to use Leo Studio branding for
+an independent derivative product.

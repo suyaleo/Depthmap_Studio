@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  application:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run validate:release
+      - run: npm run build:web
+      - run: xvfb-run -a npm run test:smoke
+      - run: xvfb-run -a npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        with:
+          name: depthmap-studio-web
+          path: web-dist
+          if-no-files-found: error
+
+  docker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: |
+          docker build \
+            --build-arg APP_VERSION=1.0.0 \
+            --build-arg VCS_REF="$GITHUB_SHA" \
+            --build-arg SOURCE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --tag depthmap-studio:ci .
+      - name: Verify image contract and health
+        run: |
+          set -euo pipefail
+          test "$(docker image inspect depthmap-studio:ci --format '{{.Config.User}}')" = "101"
+          test "$(docker image inspect depthmap-studio:ci --format '{{index .Config.Labels "org.opencontainers.image.licenses"}}')" = "Apache-2.0"
+          docker volume create depthmap-studio-ci-data >/dev/null
+          trap 'docker volume rm depthmap-studio-ci-data >/dev/null 2>&1 || true' EXIT
+          docker run --rm -v depthmap-studio-ci-data:/data depthmap-studio:ci sh -c 'echo persisted > /data/restart-check'
+          test "$(docker run --rm -v depthmap-studio-ci-data:/data depthmap-studio:ci cat /data/restart-check)" = "persisted"
+          container_id="$(docker run --rm -d -p 8790:8790 depthmap-studio:ci)"
+          trap 'docker stop "$container_id" >/dev/null 2>&1 || true; docker volume rm depthmap-studio-ci-data >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8790/api/health | grep -q '"status":"ok"'; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs "$container_id"
+              exit 1
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8790/api/version | grep -q '"version":"1.0.0"'
+          curl -fsS http://127.0.0.1:8790/ | grep -q 'Depthmap Studio'

@@ -1,3 +1,9 @@
-.DS_Store
-*.log
 node_modules/
+dist/
+web-dist/
+qa/
+outputs/
+.env
+build/DepthMapMaker.iconset/
+build/icon.svg.png
+.DS_Store

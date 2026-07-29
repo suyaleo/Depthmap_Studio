@@ -1,0 +1,14 @@
+{
+  "$schema": "./schemas/studio.schema.json",
+  "schemaVersion": 1,
+  "displayName": "Depthmap Studio",
+  "repository": "Depthmap_Studio",
+  "slug": "depthmap-studio",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "container": "ghcr.io/suyaleo/depthmap-studio",
+  "defaultPort": 8790,
+  "healthEndpoint": "/api/health",
+  "dataDirectory": "/data",
+  "aiProfile": "depthmap-studio"
+}

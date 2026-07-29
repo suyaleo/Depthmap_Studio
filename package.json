@@ -1,0 +1,74 @@
+{
+  "name": "depthmap-studio",
+  "version": "1.0.0",
+  "description": "A local-first depth map and pose video studio for the web, macOS, and Docker.",
+  "main": "main.cjs",
+  "author": "suyaleo",
+  "license": "Apache-2.0",
+  "private": false,
+  "homepage": "https://suyaleo.github.io/Depthmap_Studio/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/suyaleo/Depthmap_Studio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/suyaleo/Depthmap_Studio/issues"
+  },
+  "scripts": {
+    "start": "electron .",
+    "build:web": "node scripts/build-web.cjs",
+    "serve:web": "node scripts/serve-web.cjs",
+    "validate:release": "node scripts/validate-release.cjs",
+    "test:smoke": "electron scripts/smoke.cjs",
+    "test:visual": "electron scripts/capture.cjs",
+    "test:e2e": "electron scripts/e2e.cjs",
+    "dist:mac": "electron-builder --mac dir dmg --arm64"
+  },
+  "devDependencies": {
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.suyaleo.depthmapstudio",
+    "productName": "Depthmap Studio",
+    "asar": true,
+    "files": [
+      "index.html",
+      "studio.css",
+      "icon.svg",
+      "icon-192.png",
+      "manifest.json",
+      "assets/branding/**/*",
+      "schemas/**/*",
+      "main.cjs",
+      "LICENSE",
+      "NOTICE",
+      "THIRD_PARTY_NOTICES.md",
+      "TRADEMARKS.md",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "mac": {
+      "category": "public.app-category.video",
+      "icon": "build/icon.icns",
+      "target": [
+        "dir",
+        "dmg"
+      ],
+      "minimumSystemVersion": "12.0",
+      "darkModeSupport": true,
+      "identity": "-"
+    },
+    "dmg": {
+      "artifactName": "Depthmap-Studio-${version}-${arch}.${ext}",
+      "title": "Depthmap Studio ${version}"
+    }
+  },
+  "allowScripts": {
+    "electron@43.2.0": true,
+    "electron-winstaller@5.4.0": true
+  }
+}

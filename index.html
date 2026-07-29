@@ -1,13 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Depth Studio — Local AI Video Tools</title>
+<title>Depthmap Studio</title>
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#f0ede3">
+<meta name="theme-color" content="#16191b">
+<script>
+  (() => {
+    const key = 'depthmap-studio-theme';
+    let preference = 'system';
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved === 'light' || saved === 'dark' || saved === 'system') preference = saved;
+    } catch (_) {}
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const resolved = preference === 'system' ? (dark ? 'dark' : 'light') : preference;
+    document.documentElement.dataset.theme = resolved;
+    document.documentElement.style.colorScheme = resolved;
+  })();
+</script>
 <style>
   :root{
     --bg:#f0ede3;          /* 따뜻한 오트밀 배경 */
@@ -240,21 +254,28 @@
     footer{padding:0 12px 16px;}
   }
 </style>
+<link rel="stylesheet" href="studio.css">
 </head>
 <body>
 
 <header>
   <div class="brand">
-    <div class="eyebrow">SUYALEO LAB</div>
-    <h1>Depth Studio</h1>
+    <img src="icon.svg" alt="" width="28" height="28">
+    <div>
+      <div class="eyebrow">LOCAL AI VIDEO</div>
+      <h1>Depthmap Studio</h1>
+    </div>
   </div>
-  <div class="badge">LOCAL ONLY</div>
-  <div class="badge">NO API</div>
+  <div class="studio-suite-logo" role="img" aria-label="Leo Studio">
+    <img class="studio-logo--dark" src="assets/branding/leo-studio-dark.png" alt="" aria-hidden="true">
+    <img class="studio-logo--light" src="assets/branding/leo-studio-light.png" alt="" aria-hidden="true">
+  </div>
+  <div class="badge"><span aria-hidden="true"></span> LOCAL PROCESSING</div>
   <div class="spacer"></div>
   <div class="header-actions">
-    <button class="btn-green" id="startBtn" disabled>&#9654; Start</button>
+    <button class="btn-green" id="startBtn" disabled data-i18n="startBtn">Start</button>
     <button id="cancelBtn" disabled data-i18n="cancelBtn">Cancel</button>
-    <button id="syncPlayBtn" class="btn-blue" disabled data-i18n="syncPlay">🔗 Sync Play</button>
+    <button id="syncPlayBtn" class="btn-blue" disabled data-i18n="syncPlay">Sync Play</button>
   </div>
   <div class="lang-group" id="langGroup">
     <button data-lang="en">EN</button>
@@ -262,6 +283,14 @@
     <button data-lang="ko">KR</button>
     <button data-lang="zh">CN</button>
   </div>
+  <label class="theme-control">
+    <span class="sr-only">Theme</span>
+    <select id="themeSelect" aria-label="Theme">
+      <option value="system">System</option>
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+  </label>
 </header>
 
 <main>
@@ -276,7 +305,7 @@
   </div>
 
   <!-- 스테이지 행: 같은 그리드 행이라 높이가 항상 일치 -->
-  <div class="stage empty" id="inStage" style="grid-area:istage">
+  <div class="stage empty" id="inStage" style="grid-area:istage" tabindex="0" role="button" aria-label="Select source video">
     <div class="placeholder" id="inPlaceholder">
       <svg class="dz-icon" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17V5"/><path d="m6 9 6-6 6 6"/><path d="M4 19.5h16"/></svg>
       <div class="dz-title" data-i18n="dzTitle">Drop your video here</div>
@@ -297,8 +326,8 @@
       <div class="trim-shade" id="shadeL"></div>
       <div class="trim-shade" id="shadeR"></div>
       <div class="trim-region" id="trimRegion"></div>
-      <div class="trim-handle" id="trimL">⋮</div>
-      <div class="trim-handle" id="trimR">⋮</div>
+      <div class="trim-handle" id="trimL" role="slider" tabindex="0" aria-label="Trim start">⋮</div>
+      <div class="trim-handle" id="trimR" role="slider" tabindex="0" aria-label="Trim end">⋮</div>
     </div>
     <div class="trim-info">
       <span class="hint" id="rangeInfo"></span>
@@ -441,8 +470,8 @@
   </div>
 
   <div class="card privacy-note">
-    <strong>Private by design</strong>
-    Videos stay in this browser. The Ubuntu server only delivers the web app; processing runs locally with WebGPU or WASM.
+    <strong data-i18n="localTitle">Local by design</strong>
+    <span data-i18n="localNote">Videos stay on this Mac. AI processing runs locally with WebGPU or WASM; model files are downloaded only when first needed.</span>
   </div>
   </div>
 </main>
@@ -452,8 +481,8 @@
     <div class="progress-bar" id="progressBar"></div>
     <div class="progress-text" id="progressText">0%</div>
   </div>
-  <div class="status-line" id="statusLine"></div>
-  <div id="log"></div>
+  <div class="status-line" id="statusLine" role="status" aria-live="polite"></div>
+  <div id="log" role="log" aria-label="Processing log"></div>
 </footer>
 
 <script type="module">
@@ -465,10 +494,43 @@
 
 const $ = id => document.getElementById(id);
 
+// ---------- theme ----------
+const THEME_KEY = 'depthmap-studio-theme';
+const darkQuery = matchMedia('(prefers-color-scheme: dark)');
+let themePreference = 'system';
+
+try {
+  const savedTheme = localStorage.getItem(THEME_KEY);
+  if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system') themePreference = savedTheme;
+} catch (_) {}
+
+function applyTheme(){
+  const resolved = themePreference === 'system' ? (darkQuery.matches ? 'dark' : 'light') : themePreference;
+  document.documentElement.dataset.theme = resolved;
+  document.documentElement.style.colorScheme = resolved;
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeMeta) themeMeta.content = resolved === 'dark' ? '#16191b' : '#fbfaf7';
+}
+
+function chooseTheme(next){
+  themePreference = next;
+  try { localStorage.setItem(THEME_KEY, next); } catch (_) {}
+  applyTheme();
+}
+
+darkQuery.addEventListener('change', () => {
+  if (themePreference === 'system') applyTheme();
+});
+
+$('themeSelect').value = themePreference;
+$('themeSelect').addEventListener('change', e => chooseTheme(e.target.value));
+applyTheme();
+
 // ---------- i18n ----------
 const I18N = {
 en: {
-  syncPlay:'🔗 Sync Play',
+  startBtn:'Start', syncPlay:'Sync Play',
+  localTitle:'Local by design', localNote:'Videos stay on this device. AI processing runs locally with WebGPU or WASM; model files are downloaded only when first needed.',
   inputLabel:'INPUT — Source Video', noVideo:'No video',
   dzTitle:'Drop your video here', dzSub:'or click to browse — mp4 / webm / mov',
   pickVideo:'Select Video…',
@@ -499,7 +561,7 @@ en: {
   depthDirLabel:'Depth direction', nearWhite:'Near = white', nearBlack:'Near = black',
   temporalLabel:'Temporal smoothing', cancelBtn:'Cancel',
   statusInit:'Idle — select a video. (AI models are downloaded on the first run, then cached by your browser.)',
-  logIntro:'Depth Studio — everything runs inside this browser (your video is never uploaded).',
+  logIntro:'Depthmap Studio — everything runs inside this browser (your video is never uploaded).',
   webgpuOk:'Acceleration: WebGPU available ✓',
   webgpuNo:'WebGPU not available — CPU processing (latest Chrome/Edge recommended)',
   notVideo:'Not a video file: {name}',
@@ -536,7 +598,8 @@ en: {
   noH264:'No H.264 encoder available for this resolution',
 },
 ja: {
-  syncPlay:'🔗 同時再生',
+  startBtn:'開始', syncPlay:'同時再生',
+  localTitle:'ローカル処理', localNote:'動画はこの端末内に留まります。AI処理はWebGPUまたはWASMでローカル実行され、モデルは初回のみダウンロードされます。',
   inputLabel:'INPUT — 入力動画', noVideo:'動画なし',
   dzTitle:'ここに動画をドロップ', dzSub:'またはクリックして選択 — mp4 / webm / mov',
   pickVideo:'動画を選択…',
@@ -567,7 +630,7 @@ ja: {
   depthDirLabel:'深度の向き', nearWhite:'近い = 白', nearBlack:'近い = 黒',
   temporalLabel:'時間スムージング', cancelBtn:'キャンセル',
   statusInit:'待機中 — 動画を選択してください。（初回実行時にAIモデルをダウンロードし、以降はブラウザにキャッシュされます）',
-  logIntro:'Depth Studio — すべての処理はこのブラウザ内だけで行われます（動画はアップロードされません）。',
+  logIntro:'Depthmap Studio — すべての処理はこのブラウザ内だけで行われます（動画はアップロードされません）。',
   webgpuOk:'アクセラレーション: WebGPU 利用可能 ✓',
   webgpuNo:'WebGPU 非対応 — CPU処理になります（最新のChrome/Edge推奨）',
   notVideo:'動画ファイルではありません: {name}',
@@ -604,7 +667,8 @@ ja: {
   noH264:'この解像度に対応するH.264エンコーダがありません',
 },
 ko: {
-  syncPlay:'🔗 동시 재생',
+  startBtn:'처리 시작', syncPlay:'동시 재생',
+  localTitle:'기기 안에서만 처리', localNote:'영상은 이 기기를 벗어나지 않습니다. AI 처리는 WebGPU 또는 WASM으로 로컬 실행되며, 모델은 처음 필요할 때만 내려받습니다.',
   inputLabel:'INPUT — 업로드 영상', noVideo:'영상 없음',
   dzTitle:'영상을 여기로 드래그', dzSub:'또는 클릭해서 선택 — mp4 / webm / mov',
   pickVideo:'영상 선택…',
@@ -635,7 +699,7 @@ ko: {
   depthDirLabel:'Depth 방향', nearWhite:'가까움 = 흰색', nearBlack:'가까움 = 검정',
   temporalLabel:'Temporal 스무딩', cancelBtn:'Cancel',
   statusInit:'대기 중 — 영상을 선택하세요. (첫 실행 시 AI 모델을 내려받습니다. 이후엔 브라우저에 캐시됩니다.)',
-  logIntro:'Depth Studio — 모든 처리는 이 브라우저 안에서만 이뤄집니다 (영상 업로드 없음).',
+  logIntro:'Depthmap Studio — 모든 처리는 이 브라우저 안에서만 이뤄집니다 (영상 업로드 없음).',
   webgpuOk:'가속: WebGPU 사용 가능 ✓',
   webgpuNo:'WebGPU 미지원 — CPU 처리 (Chrome/Edge 최신 버전 권장)',
   notVideo:'영상 파일이 아닙니다: {name}',
@@ -672,7 +736,8 @@ ko: {
   noH264:'이 해상도를 지원하는 H.264 인코더가 없습니다',
 },
 zh: {
-  syncPlay:'🔗 同步播放',
+  startBtn:'开始处理', syncPlay:'同步播放',
+  localTitle:'仅在本机处理', localNote:'视频始终保留在当前设备上。AI 使用 WebGPU 或 WASM 在本机运行，模型仅在首次需要时下载。',
   inputLabel:'INPUT — 上传视频', noVideo:'无视频',
   dzTitle:'将视频拖到这里', dzSub:'或点击选择文件 — mp4 / webm / mov',
   pickVideo:'选择视频…',
@@ -703,7 +768,7 @@ zh: {
   depthDirLabel:'深度方向', nearWhite:'近 = 白', nearBlack:'近 = 黑',
   temporalLabel:'时间平滑', cancelBtn:'取消',
   statusInit:'等待中 — 请选择视频。（首次运行会下载AI模型，之后会缓存在浏览器中）',
-  logIntro:'Depth Studio — 所有处理仅在此浏览器内完成（视频不会被上传）。',
+  logIntro:'Depthmap Studio — 所有处理仅在此浏览器内完成（视频不会被上传）。',
   webgpuOk:'加速：WebGPU 可用 ✓',
   webgpuNo:'不支持 WebGPU — 将使用CPU处理（建议使用最新版 Chrome/Edge）',
   notVideo:'不是视频文件：{name}',
@@ -742,7 +807,10 @@ zh: {
 };
 const HTML_LANG = { en:'en', ja:'ja', ko:'ko', zh:'zh-CN' };
 let lang = localStorage.getItem('dve_lang');
-if (!I18N[lang]) lang = 'en';
+if (!I18N[lang]) {
+  const browserLang = (navigator.language || '').toLowerCase();
+  lang = browserLang.startsWith('ko') ? 'ko' : browserLang.startsWith('ja') ? 'ja' : browserLang.startsWith('zh') ? 'zh' : 'en';
+}
 
 function t(key, vars){
   let s = I18N[lang][key] ?? I18N.en[key] ?? key;
@@ -836,6 +904,12 @@ inStage.addEventListener('drop', e => {
 inStage.addEventListener('click', () => {
   if ($('inPlaceholder').style.display !== 'none') $('fileInput').click();
 });
+inStage.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && $('inPlaceholder').style.display !== 'none') {
+    e.preventDefault();
+    $('fileInput').click();
+  }
+});
 
 // ---------- 변환 구간 (영상 하단 트림바, 최대 30초) ----------
 const MAX_SEG = 30;
@@ -861,6 +935,12 @@ function layoutTrim(){
   $('trimR').style.left = `calc(${r}% - 7px)`;
   $('shadeL').style.left = '0'; $('shadeL').style.width = l + '%';
   $('shadeR').style.left = r + '%'; $('shadeR').style.width = (100 - r) + '%';
+  $('trimL').setAttribute('aria-valuemin', '0');
+  $('trimL').setAttribute('aria-valuemax', d.toFixed(1));
+  $('trimL').setAttribute('aria-valuenow', rangeSel.start.toFixed(1));
+  $('trimR').setAttribute('aria-valuemin', '0');
+  $('trimR').setAttribute('aria-valuemax', d.toFixed(1));
+  $('trimR').setAttribute('aria-valuenow', rangeSel.end.toFixed(1));
   updateRangeInfo();
 }
 function initRange(duration){
@@ -919,6 +999,22 @@ function startDrag(mode){
 $('trimL').addEventListener('pointerdown', startDrag('l'));
 $('trimR').addEventListener('pointerdown', startDrag('r'));
 $('trimRegion').addEventListener('pointerdown', startDrag('m'));
+for (const [id, edge] of [['trimL', 'start'], ['trimR', 'end']]) {
+  $(id).addEventListener('keydown', ev => {
+    if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return;
+    ev.preventDefault();
+    const delta = ev.key === 'ArrowRight' ? 0.1 : -0.1;
+    const d = isFinite(inVideo.duration) ? inVideo.duration : rangeSel.end;
+    if (edge === 'start') {
+      rangeSel.start = Math.min(Math.max(0, rangeSel.start + delta), rangeSel.end - 0.1);
+      inVideo.currentTime = rangeSel.start;
+    } else {
+      rangeSel.end = Math.max(Math.min(d, rangeSel.end + delta), rangeSel.start + 0.1);
+      inVideo.currentTime = rangeSel.end;
+    }
+    layoutTrim();
+  });
+}
 window.addEventListener('pointermove', ev => {
   if (!dragMode) return;
   const d = isFinite(inVideo.duration) ? inVideo.duration : rangeSel.end;
