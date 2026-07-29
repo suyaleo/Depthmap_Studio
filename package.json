@@ -22,7 +22,7 @@
     "test:smoke": "electron scripts/smoke.cjs",
     "test:visual": "electron scripts/capture.cjs",
     "test:e2e": "electron scripts/e2e.cjs",
-    "dist:mac": "electron-builder --mac dir dmg --arm64"
+    "dist:mac": "electron-builder --mac dir dmg --arm64 --publish never"
   },
   "devDependencies": {
     "electron": "^43.2.0",
