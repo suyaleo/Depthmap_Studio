@@ -57,7 +57,7 @@ uploaded to the static host.
 |---|---|---|
 | Web | Full static client-side application | `npm run build:web` |
 | GitHub Pages | Hosted static application | https://suyaleo.github.io/Depthmap_Studio/ |
-| Docker | Non-root nginx runtime with health/version endpoints | `docker compose up --build -d` |
+| Docker | Non-root multi-architecture nginx runtime with health/version endpoints | `docker compose up --build -d` |
 | macOS | arm64 Electron application and DMG | `npm run dist:mac` |
 
 The Web channel is the full product: inference, rendering, and encoding happen
@@ -91,9 +91,10 @@ curl http://localhost:8790/api/health
 curl http://localhost:8790/api/version
 ```
 
-The container runs as UID `101`, exposes port `8790`, and reserves `/data` as
-the persistent application-data volume. Source videos remain in the browser and
-are not written to the container volume.
+The container supports `linux/amd64` and `linux/arm64`, runs as UID `101`,
+exposes port `8790`, and reserves `/data` as the persistent application-data
+volume. Source videos remain in the browser and are not written to the
+container volume.
 
 Published image name:
 
@@ -101,7 +102,7 @@ Published image name:
 ghcr.io/suyaleo/depthmap-studio
 ```
 
-Only architectures proven by the release workflow are attached to a release.
+Both published architectures are built and smoke-tested before release.
 
 ## macOS desktop
 
