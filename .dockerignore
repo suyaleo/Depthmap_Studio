@@ -6,6 +6,7 @@ node_modules
 dist
 web-dist
 qa
+tests
 outputs
 build/DepthMapMaker.iconset
 build/icon.svg.png

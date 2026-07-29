@@ -14,7 +14,7 @@ async function waitFor(win, expression, timeoutMs) {
 }
 
 async function run() {
-  const samplePath = path.join(__dirname, '..', 'qa', 'sample.mp4');
+  const samplePath = path.join(__dirname, '..', 'tests', 'fixtures', 'sample.mp4');
   const sample = fs.readFileSync(samplePath).toString('base64');
   const win = new BrowserWindow({
     width: 1180,

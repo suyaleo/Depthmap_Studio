@@ -58,7 +58,8 @@ jobs:
           container_id="$(docker run --rm -d -p 8790:8790 depthmap-studio:ci)"
           trap 'docker stop "$container_id" >/dev/null 2>&1 || true; docker volume rm depthmap-studio-ci-data >/dev/null 2>&1 || true' EXIT
           for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8790/api/health | grep -q '"status":"ok"'; then
+            health_response="$(curl -fsS http://127.0.0.1:8790/api/health || true)"
+            if [[ "$health_response" == *'"status":"ok"'* ]]; then
               break
             fi
             if [ "$attempt" -eq 30 ]; then
@@ -67,5 +68,7 @@ jobs:
             fi
             sleep 1
           done
-          curl -fsS http://127.0.0.1:8790/api/version | grep -q '"version":"1.0.0"'
-          curl -fsS http://127.0.0.1:8790/ | grep -q 'Depthmap Studio'
+          version_response="$(curl -fsS http://127.0.0.1:8790/api/version)"
+          home_response="$(curl -fsS http://127.0.0.1:8790/)"
+          [[ "$version_response" == *'"version":"1.0.0"'* ]]
+          [[ "$home_response" == *'Depthmap Studio'* ]]
