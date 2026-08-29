@@ -10,9 +10,11 @@ services:
     container_name: depthmap-studio
     restart: unless-stopped
     ports:
-      - "${DEPTHMAP_STUDIO_PORT:-8790}:8790"
+      - "127.0.0.1:${DEPTHMAP_STUDIO_PORT:-8790}:8790"
     volumes:
-      - depthmap-studio-data:/data
+      - type: bind
+        source: ${DEPTHMAP_STUDIO_DATA_DIR:?Set DEPTHMAP_STUDIO_DATA_DIR to the host persistent data directory}
+        target: /data
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -21,6 +23,3 @@ services:
       timeout: 3s
       retries: 4
       start_period: 5s
-
-volumes:
-  depthmap-studio-data:

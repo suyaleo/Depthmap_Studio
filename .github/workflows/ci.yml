@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   application:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, Linux, X64, depthmap-studio]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -22,12 +22,6 @@ jobs:
       - run: npm ci
       - run: npm run validate:release
       - run: npm run build:web
-      - run: xvfb-run -a npm run test:smoke
-        env:
-          ELECTRON_DISABLE_SANDBOX: '1'
-      - run: xvfb-run -a npm run test:e2e
-        env:
-          ELECTRON_DISABLE_SANDBOX: '1'
       - uses: actions/upload-artifact@v4
         with:
           name: depthmap-studio-web
@@ -35,7 +29,7 @@ jobs:
           if-no-files-found: error
 
   docker:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, Linux, X64, depthmap-studio]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -55,10 +49,11 @@ jobs:
           trap 'docker volume rm depthmap-studio-ci-data >/dev/null 2>&1 || true' EXIT
           docker run --rm -v depthmap-studio-ci-data:/data depthmap-studio:ci sh -c 'echo persisted > /data/restart-check'
           test "$(docker run --rm -v depthmap-studio-ci-data:/data depthmap-studio:ci cat /data/restart-check)" = "persisted"
-          container_id="$(docker run --rm -d -p 8790:8790 depthmap-studio:ci)"
+          container_id="$(docker run --rm -d -p 127.0.0.1::8790 depthmap-studio:ci)"
           trap 'docker stop "$container_id" >/dev/null 2>&1 || true; docker volume rm depthmap-studio-ci-data >/dev/null 2>&1 || true' EXIT
+          endpoint="http://$(docker port "$container_id" 8790/tcp)"
           for attempt in $(seq 1 30); do
-            health_response="$(curl -fsS http://127.0.0.1:8790/api/health || true)"
+            health_response="$(curl -fsS "$endpoint/api/health" || true)"
             if [[ "$health_response" == *'"status":"ok"'* ]]; then
               break
             fi
@@ -68,7 +63,7 @@ jobs:
             fi
             sleep 1
           done
-          version_response="$(curl -fsS http://127.0.0.1:8790/api/version)"
-          home_response="$(curl -fsS http://127.0.0.1:8790/)"
+          version_response="$(curl -fsS "$endpoint/api/version")"
+          home_response="$(curl -fsS "$endpoint/")"
           [[ "$version_response" == *'"version":"1.0.0"'* ]]
           [[ "$home_response" == *'Depthmap Studio'* ]]

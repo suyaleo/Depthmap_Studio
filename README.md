@@ -95,16 +95,22 @@ packages with global `pip`. Docker remains the fully isolated runtime option.
 ## Docker / Compose
 
 ```bash
-cp .env.example .env
-docker compose up --build -d
-curl http://localhost:8790/api/health
-curl http://localhost:8790/api/version
+mkdir -p /srv/leostudio/config/depthmap-studio /srv/leostudio/data/depthmap-studio
+cp .env.example /srv/leostudio/config/depthmap-studio/compose.env
+docker compose --env-file /srv/leostudio/config/depthmap-studio/compose.env up --build -d
+curl http://127.0.0.1:8790/api/health
+curl http://127.0.0.1:8790/api/version
 ```
 
 The container supports `linux/amd64` and `linux/arm64`, runs as UID `101`,
-exposes port `8790`, and reserves `/data` as the persistent application-data
-volume. Source videos remain in the browser and are not written to the
-container volume.
+and binds port `8790` to `127.0.0.1` only. Set
+`DEPTHMAP_STUDIO_DATA_DIR=/srv/leostudio/data/depthmap-studio` in the external
+Compose environment file; `/data` is mounted from that host directory. Source
+videos remain in the browser and are not written to the container volume.
+
+For a Tailnet-only Ubuntu deployment, proxy the loopback endpoint with
+Tailscale Serve. Do not publish this service through a public reverse proxy or
+Tailscale Funnel.
 
 Published image name:
 
